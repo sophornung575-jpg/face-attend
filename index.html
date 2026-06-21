@@ -298,6 +298,7 @@ input,select{font-family:inherit;-webkit-appearance:none}
           <button class="btn btn-purple" style="flex:1" onclick="printQR()">🖨️ Print QR</button>
           <button class="btn btn-ghost" style="flex:1" id="btn-open-checkin">🔗 Open Check-in Page</button>
         </div>
+        <button class="btn btn-ghost" style="width:100%;margin-top:8px" onclick="downloadQR()">⬇️ Download QR as Image</button>
         <div style="margin-top:12px;font-size:12px;color:var(--muted);text-align:center">The QR points to this same page with <code style="font-size:11px">?checkin</code> added to the URL</div>
       </div>
       <div class="card">
@@ -743,18 +744,32 @@ function getCheckinURL() {
   url.hash = '';
   return url.toString();
 }
+let qrRendered = false;
 function renderQR() {
   const url = getCheckinURL();
   document.getElementById('qr-url-text').textContent = url;
   document.getElementById('btn-open-checkin').onclick = () => window.open(url, '_blank');
   const canvas = document.getElementById('qr-canvas');
-  QRCode.toCanvas(canvas, url, { width: 210, margin: 2, color: { dark:'#1a1a2e', light:'#ffffff' } }, err => { if (err) console.error(err); });
+  qrRendered = false;
+  if (typeof QRCode === 'undefined') {
+    toast('QR library failed to load — check your internet connection and refresh', 'error');
+    return;
+  }
+  QRCode.toCanvas(canvas, url, { width: 210, margin: 2, color: { dark:'#1a1a2e', light:'#ffffff' } }, err => {
+    if (err) { console.error(err); toast('Failed to generate QR code', 'error'); }
+    else qrRendered = true;
+  });
 }
 function printQR() {
+  if (!qrRendered) { toast('QR code is not ready yet — open the QR Code tab first', 'error'); return; }
   const url = getCheckinURL();
   const canvas = document.getElementById('qr-canvas');
   const img = canvas.toDataURL();
   const w = window.open('','_blank');
+  if (!w) {
+    toast('Popup blocked! Please allow popups, or use Download QR instead', 'error');
+    return;
+  }
   w.document.write(`<!DOCTYPE html><html><body style="text-align:center;font-family:sans-serif;padding:60px 40px">
     <h2 style="font-size:26px;margin-bottom:6px">📷 Check In Here</h2>
     <p style="color:#666;margin-bottom:24px;font-size:15px">Scan with your phone camera</p>
@@ -762,6 +777,15 @@ function printQR() {
     <p style="margin-top:18px;font-size:11px;color:#999;word-break:break-all;max-width:320px;margin-inline:auto">${url}</p>
   </body></html>`);
   w.document.close(); w.print();
+}
+function downloadQR() {
+  if (!qrRendered) { toast('QR code is not ready yet — open the QR Code tab first', 'error'); return; }
+  const canvas = document.getElementById('qr-canvas');
+  const a = document.createElement('a');
+  a.href = canvas.toDataURL('image/png');
+  a.download = 'faceattend-checkin-qr.png';
+  a.click();
+  toast('QR code downloaded!', 'success');
 }
 
 async function addStaff() {
@@ -864,7 +888,7 @@ function exportCSV() {
 
 // Expose admin functions globally for inline onclick handlers
 window.openCfg = openCfg; window.closeCfg = closeCfg; window.saveConfig = saveConfig;
-window.showTab = showTab; window.printQR = printQR;
+window.showTab = showTab; window.printQR = printQR; window.downloadQR = downloadQR;
 window.addStaff = addStaff; window.removeStaff = removeStaff; window.renderStaffTable = renderStaffTable;
 window.loadLogs = loadLogs; window.exportCSV = exportCSV; window.clearTodayLogs = clearTodayLogs;
 
