@@ -628,6 +628,7 @@ if (!IS_CHECKIN) {
 let cfg = getStoredConfig();
 let staff = [];
 let logsCache = [];
+let qrRendered = false;
 let unsubLogs = null;
 
 function openCfg() {
@@ -753,7 +754,6 @@ function getCheckinURL() {
   url.hash = '';
   return url.toString();
 }
-let qrRendered = false;
 function renderQR() {
   const url = getCheckinURL();
   document.getElementById('qr-url-text').textContent = url;
