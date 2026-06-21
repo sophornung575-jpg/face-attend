@@ -596,6 +596,12 @@ function compressPhoto(dataUrl, maxW, quality) {
 let db = null;
 const CFG_KEY = IS_CHECKIN ? 'fa_config_employee' : 'fa_config_admin';
 
+function sanitizeCfgValue(v) {
+  // Strip wrapping quotes, stray quote chars, and whitespace that commonly
+  // creep in when pasting from Firebase Console JSON snippets (e.g. "abc123" -> abc123)
+  return (v || '').trim().replace(/^["'`]+|["'`]+$/g, '').trim();
+}
+
 function getStoredConfig() {
   return JSON.parse(localStorage.getItem(CFG_KEY) || 'null')
       || JSON.parse(localStorage.getItem('fa_config_admin') || 'null'); // fallback: reuse admin's config if present
@@ -636,11 +642,14 @@ function openCfg() {
 function closeCfg() { document.getElementById('cfg-modal').classList.remove('open'); }
 
 function saveConfig() {
-  const apiKey     = document.getElementById('cfg-apikey').value.trim();
-  const authDomain = document.getElementById('cfg-authdomain').value.trim();
-  const projectId  = document.getElementById('cfg-projectid').value.trim();
-  const appId      = document.getElementById('cfg-appid').value.trim();
+  const apiKey     = sanitizeCfgValue(document.getElementById('cfg-apikey').value);
+  const authDomain = sanitizeCfgValue(document.getElementById('cfg-authdomain').value);
+  const projectId  = sanitizeCfgValue(document.getElementById('cfg-projectid').value);
+  const appId      = sanitizeCfgValue(document.getElementById('cfg-appid').value);
   if (!apiKey || !projectId) { toast('API Key and Project ID are required', 'error'); return; }
+  if (/["'`]/.test(apiKey + authDomain + projectId + appId)) {
+    toast('Quotation marks detected and removed from your input — please verify the fields look correct', 'info');
+  }
   cfg = { apiKey, authDomain, projectId, appId };
   localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
   closeCfg();
@@ -911,10 +920,10 @@ function loadEmpConfig() {
   if (empCfg && empCfg.apiKey && empCfg.projectId) initEmpFirebase();
 }
 function saveEmpConfig() {
-  const apiKey     = document.getElementById('ci-apikey').value.trim();
-  const projectId  = document.getElementById('ci-projectid').value.trim();
-  const authDomain = document.getElementById('ci-authdomain').value.trim();
-  const appId      = document.getElementById('ci-appid').value.trim();
+  const apiKey     = sanitizeCfgValue(document.getElementById('ci-apikey').value);
+  const projectId  = sanitizeCfgValue(document.getElementById('ci-projectid').value);
+  const authDomain = sanitizeCfgValue(document.getElementById('ci-authdomain').value);
+  const appId      = sanitizeCfgValue(document.getElementById('ci-appid').value);
   if (!apiKey || !projectId) { alert('API Key and Project ID are required'); return; }
   empCfg = { apiKey, projectId, authDomain, appId };
   localStorage.setItem(CFG_KEY, JSON.stringify(empCfg));
