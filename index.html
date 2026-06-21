@@ -4,13 +4,32 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>FaceAttend</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%B7%3C/text%3E%3C/svg%3E">
 
 <!-- Firebase v9 compat -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
-<!-- QR Code (admin view only) -->
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<!-- QR Code: loaded dynamically below with retries + fallback CDN, see loadQRCodeLib() -->
+<script>
+(function () {
+  var sources = [
+    'https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js',
+    'https://unpkg.com/qrcode@1.5.4/build/qrcode.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js' // last-resort, different API shape, handled defensively below
+  ];
+  var idx = 0;
+  function tryNext() {
+    if (idx >= sources.length) { window.__qrLoadFailed = true; return; }
+    var s = document.createElement('script');
+    s.src = sources[idx];
+    s.onload = function () { window.__qrLoaded = true; };
+    s.onerror = function () { idx++; tryNext(); };
+    document.head.appendChild(s);
+  }
+  tryNext();
+})();
+</script>
 
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -760,14 +779,26 @@ function renderQR() {
   document.getElementById('btn-open-checkin').onclick = () => window.open(url, '_blank');
   const canvas = document.getElementById('qr-canvas');
   qrRendered = false;
-  if (typeof QRCode === 'undefined') {
-    toast('QR library failed to load — check your internet connection and refresh', 'error');
+  attemptRenderQR(url, canvas, 0);
+}
+function attemptRenderQR(url, canvas, attempt) {
+  if (typeof QRCode !== 'undefined' && typeof QRCode.toCanvas === 'function') {
+    QRCode.toCanvas(canvas, url, { width: 210, margin: 2, color: { dark:'#1a1a2e', light:'#ffffff' } }, err => {
+      if (err) { console.error(err); toast('Failed to generate QR code', 'error'); }
+      else qrRendered = true;
+    });
     return;
   }
-  QRCode.toCanvas(canvas, url, { width: 210, margin: 2, color: { dark:'#1a1a2e', light:'#ffffff' } }, err => {
-    if (err) { console.error(err); toast('Failed to generate QR code', 'error'); }
-    else qrRendered = true;
-  });
+  // Library not ready yet. Keep retrying regardless of __qrLoadFailed, since that flag
+  // only means our <script> tags were appended/attempted -- QRCode itself may still
+  // become defined a moment later (script onload can fire after onerror logic elsewhere,
+  // or a later fallback source can still be mid-flight). Only give up after our own
+  // attempt budget is exhausted.
+  if (attempt < 30) {
+    setTimeout(() => attemptRenderQR(url, canvas, attempt + 1), 200);
+  } else {
+    toast('QR library failed to load — check your internet connection and refresh', 'error');
+  }
 }
 function printQR() {
   if (!qrRendered) { toast('QR code is not ready yet — open the QR Code tab first', 'error'); return; }
