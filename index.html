@@ -2221,12 +2221,24 @@ function sanitizeCfgValue(v) {
 }
 
 function getStoredConfig() {
-  // Built-in config takes priority so the app works out of the box on any device.
-  // A manually-saved override (via the config screen) is still honored if present,
-  // in case this page is ever reused for a different Firebase project.
-  return JSON.parse(localStorage.getItem(CFG_KEY) || 'null')
-      || JSON.parse(localStorage.getItem('fa_config_admin') || 'null')
-      || BUILT_IN_FIREBASE_CONFIG;
+  // The built-in config is the real source of truth. Any saved override in
+  // localStorage is only used if it looks clean (no stray quote characters,
+  // which is how a config gets silently corrupted -- e.g. Project ID saved as
+  // '"my-project"' instead of 'my-project'). This also self-heals devices that
+  // still have a bad config cached from before this fix existed.
+  const saved = JSON.parse(localStorage.getItem(CFG_KEY) || 'null')
+             || JSON.parse(localStorage.getItem('fa_config_admin') || 'null');
+
+  if (saved && saved.apiKey && saved.projectId && !/["'`]/.test(saved.apiKey + saved.projectId + (saved.authDomain||'') + (saved.appId||''))) {
+    return saved; // a legitimate manual override, untouched by quote-corruption
+  }
+  if (saved) {
+    // Found a stale/corrupted entry -- remove it so it can never resurface and
+    // silently shadow the built-in config again on this device.
+    localStorage.removeItem(CFG_KEY);
+    localStorage.removeItem('fa_config_admin');
+  }
+  return BUILT_IN_FIREBASE_CONFIG;
 }
 
 function connectFirebase(cfgObj) {
