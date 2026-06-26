@@ -10,6 +10,10 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
+<!-- Leaflet.js (free OpenStreetMap viewer, no API key required) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <!-- QR Code: fully self-contained, embedded inline below (no CDN, no network dependency) -->
 
 <style>
@@ -259,6 +263,7 @@ input,select{font-family:inherit;-webkit-appearance:none}
     <button class="tab" onclick="showTab('qr',this)">📱 QR Code</button>
     <button class="tab" onclick="showTab('staff',this)">👥 Staff</button>
     <button class="tab" onclick="showTab('logs',this)">📋 Logs</button>
+    <button class="tab" onclick="showTab('map',this)">🗺️ Map</button>
   </div>
 
   <!-- DASHBOARD -->
@@ -376,6 +381,22 @@ input,select{font-family:inherit;-webkit-appearance:none}
     </div>
     <div class="card">
       <div class="log-scroll" id="log-list" style="max-height:500px"><div style="color:var(--muted);font-size:13px;padding:20px;text-align:center"><span class="spinner"></span>Loading...</div></div>
+    </div>
+  </div>
+
+  <!-- MAP -->
+  <div class="page" id="page-map">
+    <div class="page-title">Check-in Locations</div>
+    <div class="page-sub">Map of where employees checked in from (requires location permission on their device)</div>
+    <div class="card">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px">
+        <div class="field" style="margin:0;min-width:140px;flex:1"><label>Date</label><input type="date" id="map-date"></div>
+        <div class="field" style="margin:0;min-width:130px;flex:1"><label>Type</label>
+          <select id="map-type"><option value="">All</option><option value="in">Check-In</option><option value="out">Check-Out</option></select></div>
+        <button class="btn btn-ghost btn-sm" style="height:36px" onclick="loadMap()">🔍 Filter</button>
+      </div>
+      <div id="map-status" style="font-size:12px;color:var(--muted);margin-bottom:10px"></div>
+      <div id="map-view" style="height:480px;border-radius:10px;overflow:hidden;background:var(--surface)"></div>
     </div>
   </div>
 
@@ -2347,6 +2368,7 @@ function showTab(id, el) {
   if (id === 'qr')    renderQR();
   if (id === 'staff') { renderStaffTable(); renderDeptChart(); }
   if (id === 'logs')  { initLogFilters(); loadLogs(); }
+  if (id === 'map')   { initMapFilters(); loadMap(); }
 }
 
 function getPresentSet() {
@@ -2569,9 +2591,98 @@ function exportCSV() {
   a.click(); toast('Exported!', 'success');
 }
 
+// ═══════════════════════════════════════════════════════════
+// MAP — OpenStreetMap via Leaflet.js, no API key required
+// ═══════════════════════════════════════════════════════════
+let mapInstance = null;
+let mapMarkers = [];
+
+function initMapFilters() {
+  const d = document.getElementById('map-date');
+  if (d && !d.value) d.value = new Date().toISOString().slice(0,10);
+}
+
+function ensureMap() {
+  if (mapInstance) return mapInstance;
+  if (typeof L === 'undefined') return null;
+  mapInstance = L.map('map-view', { worldCopyJump: true }).setView([11.5564, 104.9282], 11); // default: Phnom Penh
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(mapInstance);
+  return mapInstance;
+}
+
+async function loadMap() {
+  const statusEl = document.getElementById('map-status');
+  const map = ensureMap();
+  if (!map) { statusEl.textContent = 'Map library failed to load — check your internet connection.'; return; }
+  if (!db) { statusEl.textContent = 'Firebase not connected.'; return; }
+
+  statusEl.innerHTML = '<span class="spinner"></span>Loading check-in locations...';
+  mapMarkers.forEach(m => map.removeLayer(m));
+  mapMarkers = [];
+
+  const dateVal = document.getElementById('map-date')?.value;
+  const typeVal = document.getElementById('map-type')?.value;
+
+  try {
+    let q = db.collection('logs').orderBy('timestamp','desc').limit(300);
+    if (dateVal) {
+      const d1 = new Date(dateVal); d1.setHours(0,0,0,0);
+      const d2 = new Date(dateVal); d2.setHours(23,59,59,999);
+      q = q.where('timestamp','>=',d1).where('timestamp','<=',d2);
+    }
+    const snap = await q.get();
+    let list = snap.docs.map(d => ({ docId: d.id, ...d.data(), time: d.data().timestamp?.toDate?.()?.toISOString() || new Date().toISOString() }));
+    if (typeVal) list = list.filter(l => l.type === typeVal);
+
+    const withLocation = list.filter(l => l.location && typeof l.location.lat === 'number' && typeof l.location.lng === 'number');
+
+    if (!withLocation.length) {
+      statusEl.textContent = list.length
+        ? `${list.length} check-in(s) found, but none have location data (employee may have denied location permission).`
+        : 'No check-ins found for this filter.';
+      return;
+    }
+
+    const bounds = [];
+    withLocation.forEach(l => {
+      const isIn = l.type === 'in';
+      const icon = L.divIcon({
+        className: '',
+        html: `<div style="width:30px;height:30px;border-radius:50%;background:${isIn?'#16a34a':'#dc2626'};border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;font-size:14px;">${isIn?'✓':'×'}</div>`,
+        iconSize: [30, 30],
+        iconAnchor: [15, 15],
+      });
+      const marker = L.marker([l.location.lat, l.location.lng], { icon }).addTo(map);
+      const photoHtml = l.photo ? `<img src="${l.photo}" style="width:100%;border-radius:8px;margin-bottom:6px;max-height:140px;object-fit:cover">` : '';
+      marker.bindPopup(`
+        <div style="font-family:sans-serif;min-width:160px">
+          ${photoHtml}
+          <div style="font-weight:700;font-size:13px">${l.name}</div>
+          <div style="font-size:11px;color:#666">${l.dept||''} · ${l.employeeId||''}</div>
+          <div style="font-size:11px;margin-top:4px"><strong>${isIn?'Check-In':'Check-Out'}</strong> · ${fmtDatetime(l.time)}</div>
+          ${l.location.accuracy ? `<div style="font-size:10px;color:#999;margin-top:2px">±${Math.round(l.location.accuracy)}m accuracy</div>` : ''}
+        </div>
+      `);
+      mapMarkers.push(marker);
+      bounds.push([l.location.lat, l.location.lng]);
+    });
+
+    if (bounds.length === 1) map.setView(bounds[0], 16);
+    else map.fitBounds(bounds, { padding: [30, 30] });
+
+    statusEl.textContent = `Showing ${withLocation.length} of ${list.length} check-in(s) with location data.`;
+  } catch(e) {
+    statusEl.textContent = 'Error loading locations: ' + e.message;
+  }
+}
+
 // Expose admin functions globally for inline onclick handlers
 window.openCfg = openCfg; window.closeCfg = closeCfg; window.saveConfig = saveConfig;
 window.showTab = showTab; window.printQR = printQR; window.downloadQR = downloadQR;
+window.loadMap = loadMap;
 window.addStaff = addStaff; window.removeStaff = removeStaff; window.renderStaffTable = renderStaffTable;
 window.loadLogs = loadLogs; window.exportCSV = exportCSV; window.clearTodayLogs = clearTodayLogs;
 
@@ -2691,16 +2802,32 @@ function showPreview() {
 }
 function retake() { photoDataUrl=null; goTo('camera'); startCam(); }
 
+// Gets the device's current GPS coordinates, with a timeout and graceful
+// fallback to null if permission is denied or location is unavailable.
+// Never blocks check-in -- location is a nice-to-have, not a requirement.
+function getCurrentLocation(timeoutMs) {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) { resolve(null); return; }
+    const timer = setTimeout(() => resolve(null), timeoutMs || 6000);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { clearTimeout(timer); resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }); },
+      () => { clearTimeout(timer); resolve(null); },
+      { enableHighAccuracy: true, timeout: timeoutMs || 6000, maximumAge: 0 }
+    );
+  });
+}
+
 async function submitCheckin() {
   if (!db || !selectedPerson || !photoDataUrl) return;
   const btn = document.getElementById('btn-confirm');
   btn.innerHTML = '<span class="spinner"></span>Saving...';
   btn.className = 'btn-confirm loading';
   const compressed = await compressPhoto(photoDataUrl, 600, 0.70);
+  const location = await getCurrentLocation(6000);
   try {
     const entry = {
       name: selectedPerson.name, employeeId: selectedPerson.id, dept: selectedPerson.dept || '',
-      type: selectedType, photo: compressed,
+      type: selectedType, photo: compressed, location: location || null,
       timestamp: firebase.firestore.FieldValue.serverTimestamp(), clientTime: new Date().toISOString()
     };
     await db.collection('logs').add(entry);
