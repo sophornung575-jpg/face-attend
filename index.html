@@ -77,6 +77,8 @@ input,select{font-family:inherit;-webkit-appearance:none}
 .log-info{font-size:11px;color:var(--muted);margin-top:2px}
 .log-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
 .log-time{font-size:11px;color:var(--subtle);white-space:nowrap}
+.log-loc-btn{margin-top:4px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:99px;background:var(--pd);color:var(--pl);border:none;cursor:pointer;white-space:nowrap}
+.log-loc-btn:hover{background:var(--purple);color:#fff}
 
 /* Photo modal (shared) */
 #photo-modal{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;z-index:9999}
@@ -227,6 +229,7 @@ input,select{font-family:inherit;-webkit-appearance:none}
 .sc-time{font-size:12px;color:var(--subtle);margin-bottom:28px}
 .btn-again{padding:14px 32px;border-radius:12px;font-size:15px;font-weight:700;background:var(--purple);color:#fff}
 .btn-again:active{background:#6d28d9}
+.sc-autoreturn{font-size:13px;color:var(--muted);margin-top:4px}
 
 #screen-error{align-items:center;justify-content:center;padding:28px;text-align:center}
 .err-icon{font-size:52px;margin-bottom:14px}
@@ -536,7 +539,7 @@ input,select{font-family:inherit;-webkit-appearance:none}
     <div class="sc-name" id="sc-name">—</div>
     <div class="sc-meta" id="sc-meta">—</div>
     <div class="sc-time" id="sc-time">—</div>
-    <button class="btn-again" onclick="resetEmp()">← Check in another</button>
+    <div class="sc-autoreturn" id="sc-autoreturn">Returning to start...</div>
   </div>
 
   <!-- Error -->
@@ -2199,6 +2202,10 @@ function logHtml(l) {
   const photoEl = l.photo
     ? `<img class="log-photo" src="${l.photo}" alt="selfie" onclick='openModal(${JSON.stringify(l).replace(/'/g,"&#39;")})' title="Click to enlarge">`
     : `<div class="log-photo-empty">📷</div>`;
+  const hasLoc = l.location && typeof l.location.lat === 'number' && typeof l.location.lng === 'number';
+  const locBtn = hasLoc
+    ? `<button class="log-loc-btn" onclick='openLocationInMaps(${l.location.lat},${l.location.lng})' title="Open location in map">📍 Map</button>`
+    : '';
   return `<div class="log-item ${l.type}">
     ${photoEl}
     <div class="log-meta">
@@ -2208,8 +2215,13 @@ function logHtml(l) {
     <div class="log-right">
       <span class="badge ${l.type}">${l.type==='in'?'Check-In':'Check-Out'}</span>
       <span class="log-time">${fmtDatetime(l.time)}</span>
+      ${locBtn}
     </div>
   </div>`;
+}
+function openLocationInMaps(lat, lng) {
+  const url = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=17/${lat}/${lng}`;
+  window.open(url, '_blank');
 }
 function openModal(l) {
   document.getElementById('modal-photo').src = l.photo || '';
@@ -2700,6 +2712,7 @@ async function loadMap() {
 window.openCfg = openCfg; window.closeCfg = closeCfg; window.saveConfig = saveConfig;
 window.showTab = showTab; window.printQR = printQR; window.downloadQR = downloadQR;
 window.loadMap = loadMap;
+window.openLocationInMaps = openLocationInMaps;
 window.addStaff = addStaff; window.removeStaff = removeStaff; window.renderStaffTable = renderStaffTable;
 window.loadLogs = loadLogs; window.exportCSV = exportCSV; window.clearTodayLogs = clearTodayLogs;
 
@@ -2937,6 +2950,25 @@ function showSuccess(entry) {
   document.getElementById('sc-meta').textContent = (entry.dept||'') + ' · ' + entry.employeeId;
   document.getElementById('sc-time').textContent = '🕐 ' + new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
   goTo('success');
+  startAutoReturn(3);
+}
+
+let autoReturnTimer = null;
+function startAutoReturn(seconds) {
+  if (autoReturnTimer) clearInterval(autoReturnTimer);
+  let remaining = seconds;
+  const el = document.getElementById('sc-autoreturn');
+  el.textContent = `Returning to start in ${remaining}...`;
+  autoReturnTimer = setInterval(() => {
+    remaining--;
+    if (remaining <= 0) {
+      clearInterval(autoReturnTimer);
+      autoReturnTimer = null;
+      resetEmp();
+      return;
+    }
+    el.textContent = `Returning to start in ${remaining}...`;
+  }, 1000);
 }
 
 function goTo(id) {
@@ -2944,6 +2976,7 @@ function goTo(id) {
   document.getElementById('screen-'+id).classList.add('active');
 }
 function resetEmp() {
+  if (autoReturnTimer) { clearInterval(autoReturnTimer); autoReturnTimer = null; }
   selectedPerson=null; photoDataUrl=null; selectedType='in';
   document.getElementById('btn-continue').disabled=true;
   document.getElementById('search-inp').value='';
