@@ -199,6 +199,16 @@ input,select{font-family:inherit;-webkit-appearance:none}
 .prev-badge.in{background:var(--gd);color:var(--gl)}
 .prev-badge.out{background:rgba(220,38,38,.2);color:var(--rl)}
 .prev-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+.btn-location{width:100%;padding:11px;border-radius:10px;font-size:13px;font-weight:700;background:var(--surface);color:var(--pl);border:1.5px solid var(--border2);margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:6px}
+.btn-location:active{border-color:var(--purple)}
+.btn-location.active{background:var(--pd);border-color:var(--purple)}
+#location-preview-wrap{margin-bottom:14px}
+.loc-status{font-size:12px;color:var(--muted);margin-bottom:8px;text-align:center;min-height:16px}
+.loc-status.err{color:var(--rl)}
+.loc-status.ok{color:var(--gl)}
+#location-mini-map{height:160px;border-radius:10px;overflow:hidden;background:var(--surface);display:none}
+#location-mini-map.show{display:block}
 .btn-confirm{padding:14px;border-radius:11px;font-size:15px;font-weight:700;background:var(--green);color:#fff}
 .btn-confirm:active{background:#15803d;transform:scale(.97)}
 .btn-retake{padding:14px;border-radius:11px;font-size:15px;font-weight:700;background:var(--surface);color:var(--subtle);border:1.5px solid var(--border2)}
@@ -505,6 +515,13 @@ input,select{font-family:inherit;-webkit-appearance:none}
       <div class="prev-name" id="prev-name">—</div>
       <div class="prev-meta" id="prev-meta">—</div>
       <div class="prev-badge in" id="prev-badge">Check-In</div>
+
+      <button class="btn-location" id="btn-show-location" onclick="toggleLocationPreview()">📍 Show My Location</button>
+      <div id="location-preview-wrap" class="hidden">
+        <div id="location-status" class="loc-status"></div>
+        <div id="location-mini-map"></div>
+      </div>
+
       <div class="prev-actions">
         <button class="btn-retake" onclick="retake()">↩ Retake</button>
         <button class="btn-confirm" id="btn-confirm" onclick="submitCheckin()">✓ Confirm</button>
@@ -2798,6 +2815,13 @@ function showPreview() {
   const badge = document.getElementById('prev-badge');
   badge.textContent = selectedType==='in' ? '✅ Check-In' : '🚪 Check-Out';
   badge.className = 'prev-badge ' + selectedType;
+  // Reset location preview state for this fresh check-in attempt
+  cachedLocation = undefined; // undefined = not yet fetched, null = fetched but unavailable
+  if (miniMapInstance) { miniMapInstance.remove(); miniMapInstance = null; }
+  document.getElementById('location-preview-wrap').classList.add('hidden');
+  document.getElementById('location-mini-map').classList.remove('show');
+  document.getElementById('btn-show-location').textContent = '📍 Show My Location';
+  document.getElementById('btn-show-location').classList.remove('active');
   goTo('preview');
 }
 function retake() { photoDataUrl=null; goTo('camera'); startCam(); }
@@ -2817,13 +2841,77 @@ function getCurrentLocation(timeoutMs) {
   });
 }
 
+// cachedLocation: undefined = not yet requested, null = requested but unavailable/denied, object = {lat,lng,accuracy}
+let cachedLocation;
+let miniMapInstance = null;
+
+async function toggleLocationPreview() {
+  const wrap = document.getElementById('location-preview-wrap');
+  const mapEl = document.getElementById('location-mini-map');
+  const statusEl = document.getElementById('location-status');
+  const btn = document.getElementById('btn-show-location');
+
+  const isOpen = !wrap.classList.contains('hidden');
+  if (isOpen) {
+    wrap.classList.add('hidden');
+    btn.textContent = '📍 Show My Location';
+    btn.classList.remove('active');
+    return;
+  }
+
+  wrap.classList.remove('hidden');
+  btn.textContent = '📍 Hide Location';
+  btn.classList.add('active');
+
+  if (cachedLocation === undefined) {
+    statusEl.className = 'loc-status';
+    statusEl.textContent = 'Getting your location...';
+    cachedLocation = await getCurrentLocation(8000);
+  }
+
+  if (!cachedLocation) {
+    statusEl.className = 'loc-status err';
+    statusEl.textContent = '⚠️ Location unavailable — check your device permissions. You can still check in without it.';
+    mapEl.classList.remove('show');
+    return;
+  }
+
+  statusEl.className = 'loc-status ok';
+  statusEl.textContent = `📍 Accurate to ±${Math.round(cachedLocation.accuracy)}m`;
+  mapEl.classList.add('show');
+
+  if (typeof L === 'undefined') {
+    statusEl.className = 'loc-status err';
+    statusEl.textContent = 'Map library unavailable, but your location was captured.';
+    mapEl.classList.remove('show');
+    return;
+  }
+
+  // Give the (just-unhidden) container a tick to get real layout dimensions before Leaflet measures it
+  setTimeout(() => {
+    if (miniMapInstance) { miniMapInstance.remove(); miniMapInstance = null; }
+    miniMapInstance = L.map('location-mini-map', { zoomControl: false, attributionControl: false, dragging: true, scrollWheelZoom: false })
+      .setView([cachedLocation.lat, cachedLocation.lng], 16);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(miniMapInstance);
+    const icon = L.divIcon({
+      className: '',
+      html: `<div style="width:26px;height:26px;border-radius:50%;background:#7c3aed;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4)"></div>`,
+      iconSize: [26, 26], iconAnchor: [13, 13],
+    });
+    L.marker([cachedLocation.lat, cachedLocation.lng], { icon }).addTo(miniMapInstance);
+    miniMapInstance.invalidateSize();
+  }, 50);
+}
+
 async function submitCheckin() {
   if (!db || !selectedPerson || !photoDataUrl) return;
   const btn = document.getElementById('btn-confirm');
   btn.innerHTML = '<span class="spinner"></span>Saving...';
   btn.className = 'btn-confirm loading';
   const compressed = await compressPhoto(photoDataUrl, 600, 0.70);
-  const location = await getCurrentLocation(6000);
+  // Reuse the location if the employee already revealed it via the preview button;
+  // otherwise fetch it fresh now (still never blocks check-in if unavailable).
+  const location = cachedLocation !== undefined ? cachedLocation : await getCurrentLocation(6000);
   try {
     const entry = {
       name: selectedPerson.name, employeeId: selectedPerson.id, dept: selectedPerson.dept || '',
@@ -2868,6 +2956,7 @@ window.saveEmpConfig = saveEmpConfig; window.pick = pick; window.filterList = fi
 window.setType = setType; window.openCamera = openCamera; window.flipCam = flipCam;
 window.goBack = goBack; window.snap = snap; window.retake = retake;
 window.submitCheckin = submitCheckin; window.resetEmp = resetEmp;
+window.toggleLocationPreview = toggleLocationPreview;
 
 loadEmpConfig();
 
