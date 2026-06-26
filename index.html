@@ -2198,11 +2198,21 @@ function compressPhoto(dataUrl, maxW, quality) {
 }
 
 // ═══════════════════════════════════════════════════════════
-// FIREBASE — config key differs by role so admin & employee
-// devices can each store their own connection independently
+// FIREBASE — config is baked in below so neither admins nor
+// employees scanning the QR ever need to enter credentials.
+// (Firebase web config is a public client identifier, not a
+// secret — access control is enforced by Firestore security
+// rules, not by hiding this object.)
 // ═══════════════════════════════════════════════════════════
 let db = null;
 const CFG_KEY = IS_CHECKIN ? 'fa_config_employee' : 'fa_config_admin';
+
+const BUILT_IN_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBD1ZYsCt2Std1L9ONQiivw5Kq4SesBEmo",
+  authDomain: "face-attend-e048b.firebaseapp.com",
+  projectId: "face-attend-e048b",
+  appId: "1:423463643640:web:20658638486047e4b14e0d"
+};
 
 function sanitizeCfgValue(v) {
   // Strip wrapping quotes, stray quote chars, and whitespace that commonly
@@ -2211,8 +2221,12 @@ function sanitizeCfgValue(v) {
 }
 
 function getStoredConfig() {
+  // Built-in config takes priority so the app works out of the box on any device.
+  // A manually-saved override (via the config screen) is still honored if present,
+  // in case this page is ever reused for a different Firebase project.
   return JSON.parse(localStorage.getItem(CFG_KEY) || 'null')
-      || JSON.parse(localStorage.getItem('fa_config_admin') || 'null'); // fallback: reuse admin's config if present
+      || JSON.parse(localStorage.getItem('fa_config_admin') || 'null')
+      || BUILT_IN_FIREBASE_CONFIG;
 }
 
 function connectFirebase(cfgObj) {
@@ -2227,6 +2241,7 @@ function connectFirebase(cfgObj) {
     return false;
   }
 }
+
 
 // ═══════════════════════════════════════════════════════════
 // ═══════════════════════ ADMIN VIEW ═════════════════════════
