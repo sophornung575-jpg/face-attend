@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>FaceAttend</title>
+<title>Face Attendance ស្កេនមុខចូលនឺងចេញ</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%B7%3C/text%3E%3C/svg%3E">
 
 <!-- Firebase v9 compat -->
@@ -19,12 +19,12 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
-  --bg:#0b0d14;--surface:#131620;--card:#1a1e2e;--border:#252a3d;--border2:#2e3450;
-  --text:#e2e8f0;--muted:#64748b;--subtle:#94a3b8;
-  --purple:#7c3aed;--pl:#a78bfa;--pd:#1e1b4b;
-  --green:#16a34a;--gl:#4ade80;--gd:#14532d;
-  --red:#dc2626;--rl:#f87171;--rd:#450a0a;
-  --amber:#d97706;--al:#fbbf24;
+  --bg:#ffffff;--surface:#f7f7f8;--card:#ffffff;--border:#e5e7eb;--border2:#d1d5db;
+  --text:#1f2937;--muted:#6b7280;--subtle:#4b5563;
+  --purple:#b45309;--pl:#b45309;--pd:#fff3e0;
+  --green:#16a34a;--gl:#16a34a;--gd:#dcfce7;
+  --red:#dc2626;--rl:#dc2626;--rd:#fee2e2;
+  --amber:#b45309;--al:#b45309;
 }
 html,body{height:100%}
 body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
@@ -50,7 +50,7 @@ input,select{font-family:inherit;-webkit-appearance:none}
 
 .btn{padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .18s}
 .btn-purple{background:var(--purple);color:#fff}
-.btn-purple:hover:not(:disabled){background:#6d28d9}
+.btn-purple:hover:not(:disabled){background:#934407}
 .btn-ghost{background:var(--surface);color:var(--subtle);border:1px solid var(--border2)}
 .btn-ghost:hover:not(:disabled){border-color:var(--purple);color:var(--pl)}
 .btn-red{background:var(--red);color:#fff}
@@ -174,7 +174,7 @@ input,select{font-family:inherit;-webkit-appearance:none}
 .type-btn.sel-out{border-color:var(--red);background:rgba(220,38,38,.18);color:var(--rl)}
 .bottom-bar{position:fixed;bottom:0;left:0;right:0;padding:14px 16px 24px;background:var(--bg);border-top:1px solid var(--border)}
 .btn-continue{width:100%;padding:15px;border-radius:12px;font-size:16px;font-weight:700;background:var(--purple);color:#fff}
-.btn-continue:active:not(:disabled){background:#6d28d9;transform:scale(.98)}
+.btn-continue:active:not(:disabled){background:#934407;transform:scale(.98)}
 .btn-continue:disabled{opacity:.4}
 
 #screen-camera{position:relative;background:#000}
@@ -185,7 +185,7 @@ input,select{font-family:inherit;-webkit-appearance:none}
 .cam-top-info .cti-name{font-size:15px;font-weight:700;color:#fff}
 .cam-top-info .cti-type{font-size:12px;color:rgba(255,255,255,.65)}
 .cam-guide{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
-.oval{width:200px;height:260px;border-radius:50% 50% 46% 46%;border:2.5px solid rgba(167,139,250,.75);box-shadow:0 0 0 4000px rgba(0,0,0,.42)}
+.oval{width:200px;height:260px;border-radius:50% 50% 46% 46%;border:2.5px solid rgba(180,83,9,.85);box-shadow:0 0 0 4000px rgba(0,0,0,.42)}
 .oval-hint{margin-top:22px;font-size:14px;font-weight:600;color:#fff;background:rgba(0,0,0,.55);padding:8px 18px;border-radius:99px}
 .cam-bottom{position:absolute;bottom:0;left:0;right:0;padding:20px 20px 36px;background:linear-gradient(to top,rgba(0,0,0,.88) 60%,transparent 100%);display:flex;align-items:center;justify-content:center;gap:24px}
 .shutter{width:70px;height:70px;border-radius:50%;background:#fff;border:4px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 0 0 6px rgba(255,255,255,.12)}
@@ -228,7 +228,7 @@ input,select{font-family:inherit;-webkit-appearance:none}
 .sc-meta{font-size:13px;color:var(--muted);margin-bottom:6px}
 .sc-time{font-size:12px;color:var(--subtle);margin-bottom:28px}
 .btn-again{padding:14px 32px;border-radius:12px;font-size:15px;font-weight:700;background:var(--purple);color:#fff}
-.btn-again:active{background:#6d28d9}
+.btn-again:active{background:#934407}
 .sc-autoreturn{font-size:13px;color:var(--muted);margin-top:4px}
 
 #screen-error{align-items:center;justify-content:center;padding:28px;text-align:center}
@@ -2908,7 +2908,7 @@ async function toggleLocationPreview() {
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(miniMapInstance);
     const icon = L.divIcon({
       className: '',
-      html: `<div style="width:26px;height:26px;border-radius:50%;background:#7c3aed;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4)"></div>`,
+      html: `<div style="width:26px;height:26px;border-radius:50%;background:#b45309;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4)"></div>`,
       iconSize: [26, 26], iconAnchor: [13, 13],
     });
     L.marker([cachedLocation.lat, cachedLocation.lng], { icon }).addTo(miniMapInstance);
