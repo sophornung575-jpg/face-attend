@@ -139,6 +139,15 @@ input,select{font-family:inherit;-webkit-appearance:none}
 .cfg-sub{font-size:13px;color:var(--muted);margin-bottom:20px}
 .cfg-hint{font-size:12px;color:var(--muted);margin-top:14px;line-height:1.6}
 
+#extrapay-modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:9998}
+#extrapay-modal.open{display:flex}
+.ep-item{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:13px}
+.ep-item-cat{flex:1;font-weight:600}
+.ep-item-amt{font-weight:700;color:var(--gl)}
+.ep-item-del{background:none;border:none;color:var(--rl);font-size:16px;cursor:pointer;padding:0 4px}
+.sal-extra-btn{font-size:11px;font-weight:600;padding:3px 9px;border-radius:99px;background:var(--pd);color:var(--pl);border:none;cursor:pointer;white-space:nowrap}
+.sal-extra-btn:hover{background:var(--purple);color:#fff}
+
 @media(max-width:700px){.grid2,.grid4{grid-template-columns:1fr}.page{padding:14px 12px}}
 
 /* ═══════════════════════ EMPLOYEE CHECK-IN VIEW ═══════════════════════ */
@@ -430,15 +439,15 @@ input,select{font-family:inherit;-webkit-appearance:none}
     <div class="grid4" style="margin:16px 0">
       <div class="stat-tile"><div class="stat-val" id="sal-staff" style="color:var(--pl)">—</div><div class="stat-lbl">Staff Paid</div></div>
       <div class="stat-tile"><div class="stat-val" id="sal-hours" style="color:var(--gl)">—</div><div class="stat-lbl">Total Hours</div></div>
+      <div class="stat-tile"><div class="stat-val" id="sal-extra" style="color:var(--pl)">—</div><div class="stat-lbl">Total Extra Pay</div></div>
       <div class="stat-tile"><div class="stat-val" id="sal-total" style="color:var(--pl)">—</div><div class="stat-lbl">Total Payroll</div></div>
-      <div class="stat-tile"><div class="stat-val" id="sal-flagged" style="color:var(--rl)">—</div><div class="stat-lbl">Flagged Days</div></div>
     </div>
 
     <div class="card">
       <div class="card-title">📋 Payroll Breakdown</div>
       <div style="overflow-x:auto">
-        <table class="tbl"><thead><tr><th>Employee</th><th>Department</th><th>Days Present</th><th>Hours Worked</th><th>Rate</th><th>Pay</th><th></th></tr></thead>
-        <tbody id="salary-tbody"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">Select a month and click Calculate</td></tr></tbody></table>
+        <table class="tbl"><thead><tr><th>Employee</th><th>Department</th><th>Days</th><th>Hours</th><th>Rate</th><th>Base Pay</th><th>Extra Pay</th><th>Total</th><th></th></tr></thead>
+        <tbody id="salary-tbody"><tr><td colspan="9" style="text-align:center;color:var(--muted);padding:20px">Select a month and click Calculate</td></tr></tbody></table>
       </div>
     </div>
 
@@ -446,6 +455,26 @@ input,select{font-family:inherit;-webkit-appearance:none}
       <div class="card-title" style="color:var(--rl)">⚠️ Flagged — Needs Review</div>
       <div class="page-sub" style="margin-bottom:10px">These check-ins are missing a matching check-out and were NOT included in hours/pay above. Review manually.</div>
       <div class="log-scroll" id="salary-flags-list" style="max-height:260px"></div>
+    </div>
+  </div>
+
+  <!-- Extra Pay Modal -->
+  <div id="extrapay-modal">
+    <div class="cfg-inner">
+      <div class="cfg-title">💵 Extra Pay — <span id="ep-emp-name">—</span></div>
+      <div class="cfg-sub">Add allowances, bonuses, or other one-time amounts for <span id="ep-month-label">this month</span>. These add on top of hourly pay.</div>
+
+      <div id="ep-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;max-height:220px;overflow-y:auto"></div>
+
+      <div style="display:flex;gap:8px;margin-bottom:6px">
+        <input type="text" id="ep-category" placeholder="e.g. Transport, Meal, Bonus" style="flex:1.4;padding:9px 12px;background:var(--surface);border:1px solid var(--border2);border-radius:7px;color:var(--text);font-size:13px;outline:none">
+        <input type="number" id="ep-amount" placeholder="Amount" step="0.01" style="flex:1;padding:9px 12px;background:var(--surface);border:1px solid var(--border2);border-radius:7px;color:var(--text);font-size:13px;outline:none">
+      </div>
+      <button class="btn btn-ghost" style="width:100%;margin-bottom:14px" onclick="addExtraPayItem()">➕ Add Item</button>
+
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-purple" style="flex:1" onclick="closeExtraPayModal()">Done</button>
+      </div>
     </div>
   </div>
 
@@ -2779,7 +2808,7 @@ async function calculateSalary() {
   if (!monthVal) { toast('Pick a month first', 'error'); return; }
 
   const tbody = document.getElementById('salary-tbody');
-  tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px"><span class="spinner"></span>Calculating...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:20px"><span class="spinner"></span>Calculating...</td></tr>`;
 
   const [year, month] = monthVal.split('-').map(Number);
   const rangeStart = new Date(year, month - 1, 1, 0, 0, 0);
@@ -2797,6 +2826,16 @@ async function calculateSalary() {
       return { ...data, time: data.timestamp?.toDate?.() || new Date(data.clientTime) };
     });
 
+    // Fetch extra pay items for this month (allowances, bonuses, etc.)
+    const extraSnap = await db.collection('extraPay').where('month', '==', monthVal).get();
+    const extraByEmployee = {};
+    extraSnap.docs.forEach(d => {
+      const data = d.data();
+      if (!extraByEmployee[data.employeeId]) extraByEmployee[data.employeeId] = [];
+      extraByEmployee[data.employeeId].push({ docId: d.id, ...data });
+    });
+    currentMonthExtraPay = extraByEmployee; // cache for the modal to read/edit
+
     // Group logs by employeeId, then by calendar day
     const byEmployee = {};
     logs.forEach(l => {
@@ -2805,6 +2844,16 @@ async function calculateSalary() {
       const dayKey = l.time.toDateString();
       if (!byEmployee[l.employeeId].days[dayKey]) byEmployee[l.employeeId].days[dayKey] = [];
       byEmployee[l.employeeId].days[dayKey].push(l);
+    });
+
+    // Also include staff who have NO check-ins this month but DO have extra pay
+    // entries (e.g. someone on leave still receiving a transport allowance) so
+    // their bonus isn't silently lost from the payroll view.
+    Object.keys(extraByEmployee).forEach(empId => {
+      if (!byEmployee[empId]) {
+        const staffRecord = staff.find(s => s.id === empId);
+        byEmployee[empId] = { name: staffRecord?.name || empId, dept: staffRecord?.dept || '', days: {} };
+      }
     });
 
     const results = [];
@@ -2854,9 +2903,14 @@ async function calculateSalary() {
         if (dayHadPairing) { totalHours += dayHours; daysPresent += 1; }
       });
 
+      const extraItems = extraByEmployee[empId] || [];
+      const extraTotal = extraItems.reduce((s, item) => s + (item.amount || 0), 0);
+      const basePay = totalHours * rate;
+
       results.push({
         employeeId: empId, name: info.name, dept: info.dept,
-        daysPresent, hours: totalHours, rate, pay: totalHours * rate,
+        daysPresent, hours: totalHours, rate, basePay,
+        extraTotal, extraItems, pay: basePay + extraTotal,
       });
     });
 
@@ -2872,25 +2926,36 @@ function renderSalaryTable(results, flagged) {
   const tbody = document.getElementById('salary-tbody');
   const totalStaff = results.length;
   const totalHours = results.reduce((s,r) => s + r.hours, 0);
+  const totalExtra = results.reduce((s,r) => s + r.extraTotal, 0);
   const totalPay   = results.reduce((s,r) => s + r.pay, 0);
 
   document.getElementById('sal-staff').textContent = totalStaff;
   document.getElementById('sal-hours').textContent = totalHours.toFixed(1);
+  document.getElementById('sal-extra').textContent = '$' + totalExtra.toFixed(2);
   document.getElementById('sal-total').textContent = '$' + totalPay.toFixed(2);
-  document.getElementById('sal-flagged').textContent = flagged.length;
 
   if (!results.length) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">No check-in activity found for this month</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:20px">No check-in activity or extra pay found for this month</td></tr>`;
   } else {
-    tbody.innerHTML = results.map(r => `<tr>
+    tbody.innerHTML = results.map(r => {
+      const extraLabel = r.extraTotal > 0
+        ? `$${r.extraTotal.toFixed(2)} <span style="color:var(--muted);font-weight:400">(${r.extraItems.length})</span>`
+        : '—';
+      return `<tr>
       <td><div style="display:flex;align-items:center;gap:10px"><div class="av">${initials(r.name||'?')}</div><div style="font-weight:600">${r.name||r.employeeId}</div></div></td>
       <td style="font-size:12px">${r.dept||'—'}</td>
       <td style="font-size:12px">${r.daysPresent}</td>
       <td style="font-size:12px">${r.hours.toFixed(2)} hrs</td>
       <td style="font-size:12px">$${r.rate.toFixed(2)}/hr</td>
+      <td style="font-size:12px">$${r.basePay.toFixed(2)}</td>
+      <td style="font-size:12px">${extraLabel}</td>
       <td style="font-weight:700;color:var(--gl)">$${r.pay.toFixed(2)}</td>
-      <td>${r.rate === 0 ? '<span class="badge absent" title="No hourly rate set for this employee">No rate set</span>' : ''}</td>
-    </tr>`).join('');
+      <td style="display:flex;gap:6px;align-items:center">
+        <button class="sal-extra-btn" onclick="openExtraPayModal('${r.employeeId}','${(r.name||'').replace(/'/g,"&#39;")}')">💵 Extra</button>
+        ${r.rate === 0 ? '<span class="badge absent" title="No hourly rate set for this employee">No rate</span>' : ''}
+      </td>
+    </tr>`;
+    }).join('');
   }
 
   const flagsCard = document.getElementById('salary-flags-card');
@@ -2912,14 +2977,86 @@ function renderSalaryTable(results, flagged) {
 
 function exportSalaryCSV() {
   if (!lastSalaryResult || !lastSalaryResult.results.length) { toast('Calculate salary first', 'info'); return; }
-  let csv = 'Employee,ID,Department,Days Present,Hours Worked,Hourly Rate,Total Pay\n';
+  let csv = 'Employee,ID,Department,Days Present,Hours Worked,Hourly Rate,Base Pay,Extra Pay,Total Pay\n';
   lastSalaryResult.results.forEach(r => {
-    csv += `"${r.name||''}","${r.employeeId}","${r.dept||''}",${r.daysPresent},${r.hours.toFixed(2)},${r.rate.toFixed(2)},${r.pay.toFixed(2)}\n`;
+    csv += `"${r.name||''}","${r.employeeId}","${r.dept||''}",${r.daysPresent},${r.hours.toFixed(2)},${r.rate.toFixed(2)},${r.basePay.toFixed(2)},${r.extraTotal.toFixed(2)},${r.pay.toFixed(2)}\n`;
   });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
   a.download = `payroll_${lastSalaryResult.month}.csv`;
   a.click(); toast('Payroll exported!', 'success');
+}
+
+// ═══════════════════════════════════════════════════════════
+// EXTRA PAY — allowances, bonuses, manual one-time amounts
+// stored per employee, per month, as named line items
+// ═══════════════════════════════════════════════════════════
+let currentMonthExtraPay = {}; // { employeeId: [ {docId, employeeId, month, category, amount} ] }
+let activeExtraPayEmployee = null;
+
+function openExtraPayModal(employeeId, employeeName) {
+  activeExtraPayEmployee = employeeId;
+  document.getElementById('ep-emp-name').textContent = employeeName || employeeId;
+  document.getElementById('ep-month-label').textContent = formatMonthLabel(lastSalaryResult?.month);
+  document.getElementById('ep-category').value = '';
+  document.getElementById('ep-amount').value = '';
+  renderExtraPayList();
+  document.getElementById('extrapay-modal').classList.add('open');
+}
+function closeExtraPayModal() {
+  document.getElementById('extrapay-modal').classList.remove('open');
+  activeExtraPayEmployee = null;
+  // Recalculate so the table reflects any additions/removals made in the modal
+  calculateSalary();
+}
+function formatMonthLabel(monthVal) {
+  if (!monthVal) return 'this month';
+  const [y,m] = monthVal.split('-').map(Number);
+  return new Date(y, m-1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+function renderExtraPayList() {
+  const items = currentMonthExtraPay[activeExtraPayEmployee] || [];
+  const el = document.getElementById('ep-list');
+  if (!items.length) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:10px 0">No extra pay items yet for this month</p>';
+    return;
+  }
+  el.innerHTML = items.map(item => `<div class="ep-item">
+    <span class="ep-item-cat">${item.category}</span>
+    <span class="ep-item-amt">$${(item.amount||0).toFixed(2)}</span>
+    <button class="ep-item-del" onclick="deleteExtraPayItem('${item.docId}')" title="Remove">✕</button>
+  </div>`).join('');
+}
+async function addExtraPayItem() {
+  if (!db || !activeExtraPayEmployee) return;
+  const category = document.getElementById('ep-category').value.trim();
+  const amount = parseFloat(document.getElementById('ep-amount').value);
+  if (!category) { toast('Enter a category name (e.g. Transport)', 'error'); return; }
+  if (isNaN(amount)) { toast('Enter a valid amount', 'error'); return; }
+  const monthVal = lastSalaryResult?.month || document.getElementById('salary-month').value;
+  try {
+    const docRef = await db.collection('extraPay').add({
+      employeeId: activeExtraPayEmployee, month: monthVal, category, amount,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    if (!currentMonthExtraPay[activeExtraPayEmployee]) currentMonthExtraPay[activeExtraPayEmployee] = [];
+    currentMonthExtraPay[activeExtraPayEmployee].push({ docId: docRef.id, employeeId: activeExtraPayEmployee, month: monthVal, category, amount });
+    document.getElementById('ep-category').value = '';
+    document.getElementById('ep-amount').value = '';
+    renderExtraPayList();
+    toast('Extra pay added', 'success');
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+}
+async function deleteExtraPayItem(docId) {
+  if (!db) return;
+  try {
+    await db.collection('extraPay').doc(docId).delete();
+    Object.keys(currentMonthExtraPay).forEach(empId => {
+      currentMonthExtraPay[empId] = currentMonthExtraPay[empId].filter(i => i.docId !== docId);
+    });
+    renderExtraPayList();
+    toast('Removed', 'info');
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
 }
 
 // Expose admin functions globally for inline onclick handlers
@@ -2928,6 +3065,8 @@ window.showTab = showTab; window.printQR = printQR; window.downloadQR = download
 window.loadMap = loadMap;
 window.openLocationInMaps = openLocationInMaps;
 window.calculateSalary = calculateSalary; window.exportSalaryCSV = exportSalaryCSV;
+window.openExtraPayModal = openExtraPayModal; window.closeExtraPayModal = closeExtraPayModal;
+window.addExtraPayItem = addExtraPayItem; window.deleteExtraPayItem = deleteExtraPayItem;
 window.editRate = editRate;
 window.addStaff = addStaff; window.removeStaff = removeStaff; window.renderStaffTable = renderStaffTable;
 window.loadLogs = loadLogs; window.exportCSV = exportCSV; window.clearTodayLogs = clearTodayLogs;
