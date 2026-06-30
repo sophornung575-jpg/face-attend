@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Face Attendance</title>
+<title>FaceAttend</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%B7%3C/text%3E%3C/svg%3E">
 
 <!-- Firebase v9 compat -->
@@ -262,6 +262,7 @@ input,select{font-family:inherit;-webkit-appearance:none}
 
   <header id="admin-header">
     <div class="logo">
+      <div class="logo-icon">📷</div>
       <div class="logo-text">FaceAttend Admin</div>
     </div>
     <div class="hdr-right">
@@ -276,6 +277,7 @@ input,select{font-family:inherit;-webkit-appearance:none}
     <button class="tab" onclick="showTab('staff',this)">👥 Staff</button>
     <button class="tab" onclick="showTab('logs',this)">📋 Logs</button>
     <button class="tab" onclick="showTab('map',this)">🗺️ Map</button>
+    <button class="tab" onclick="showTab('salary',this)">💰 Salary</button>
   </div>
 
   <!-- DASHBOARD -->
@@ -358,6 +360,7 @@ input,select{font-family:inherit;-webkit-appearance:none}
           </select>
         </div>
         <div class="field"><label>Role / Position</label><input type="text" id="s-role" placeholder="e.g. Software Engineer"></div>
+        <div class="field"><label>Hourly Rate ($)</label><input type="number" id="s-rate" placeholder="e.g. 5.00" step="0.01" min="0"></div>
         <button class="btn btn-purple" style="width:100%;margin-top:4px" onclick="addStaff()" id="btn-add-staff">➕ Add Employee</button>
       </div>
       <div class="card">
@@ -371,7 +374,7 @@ input,select{font-family:inherit;-webkit-appearance:none}
         <input type="text" id="staff-q" placeholder="Search..." oninput="renderStaffTable()" style="padding:7px 11px;background:var(--surface);border:1px solid var(--border2);border-radius:7px;color:var(--text);font-size:12px;width:170px;outline:none">
       </div>
       <div style="overflow-x:auto">
-        <table class="tbl"><thead><tr><th>Name</th><th>ID</th><th>Department</th><th>Role</th><th>Today</th><th></th></tr></thead>
+        <table class="tbl"><thead><tr><th>Name</th><th>ID</th><th>Department</th><th>Role</th><th>Rate</th><th>Today</th><th></th></tr></thead>
         <tbody id="staff-tbody"></tbody></table>
       </div>
     </div>
@@ -412,6 +415,40 @@ input,select{font-family:inherit;-webkit-appearance:none}
     </div>
   </div>
 
+  <!-- SALARY -->
+  <div class="page" id="page-salary">
+    <div class="page-title">Salary Calculation</div>
+    <div class="page-sub">Hourly pay based on check-in / check-out times — pick a month to calculate</div>
+    <div class="card">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:0">
+        <div class="field" style="margin:0;min-width:160px;flex:1"><label>Month</label><input type="month" id="salary-month"></div>
+        <button class="btn btn-purple btn-sm" style="height:36px" onclick="calculateSalary()">💰 Calculate</button>
+        <button class="btn btn-ghost btn-sm" style="height:36px" onclick="exportSalaryCSV()">📄 Export CSV</button>
+      </div>
+    </div>
+
+    <div class="grid4" style="margin:16px 0">
+      <div class="stat-tile"><div class="stat-val" id="sal-staff" style="color:var(--pl)">—</div><div class="stat-lbl">Staff Paid</div></div>
+      <div class="stat-tile"><div class="stat-val" id="sal-hours" style="color:var(--gl)">—</div><div class="stat-lbl">Total Hours</div></div>
+      <div class="stat-tile"><div class="stat-val" id="sal-total" style="color:var(--pl)">—</div><div class="stat-lbl">Total Payroll</div></div>
+      <div class="stat-tile"><div class="stat-val" id="sal-flagged" style="color:var(--rl)">—</div><div class="stat-lbl">Flagged Days</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📋 Payroll Breakdown</div>
+      <div style="overflow-x:auto">
+        <table class="tbl"><thead><tr><th>Employee</th><th>Department</th><th>Days Present</th><th>Hours Worked</th><th>Rate</th><th>Pay</th><th></th></tr></thead>
+        <tbody id="salary-tbody"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">Select a month and click Calculate</td></tr></tbody></table>
+      </div>
+    </div>
+
+    <div class="card" id="salary-flags-card" style="display:none">
+      <div class="card-title" style="color:var(--rl)">⚠️ Flagged — Needs Review</div>
+      <div class="page-sub" style="margin-bottom:10px">These check-ins are missing a matching check-out and were NOT included in hours/pay above. Review manually.</div>
+      <div class="log-scroll" id="salary-flags-list" style="max-height:260px"></div>
+    </div>
+  </div>
+
   <!-- Firebase Config Modal -->
   <div id="cfg-modal">
     <div class="cfg-inner">
@@ -444,7 +481,8 @@ input,select{font-family:inherit;-webkit-appearance:none}
   <div class="screen active" id="screen-empconfig">
     <div class="cfg-card">
       <div class="cfg-logo">
-        <h1>FaceCheck ស្កេនមុខចេញចូលធ្វើការ</h1>
+        <div class="ic">📷</div>
+        <h1>FaceAttend</h1>
         <p>Employee Check-In</p>
       </div>
       <div class="field"><label>Firebase API Key</label><input type="text" id="ci-apikey" placeholder="AIzaSy..."></div>
@@ -460,13 +498,13 @@ input,select{font-family:inherit;-webkit-appearance:none}
   <div class="screen" id="screen-select">
     <div class="select-header">
       <div class="brand">
-        <div class="brand-icon"></div>
+        <div class="brand-icon">📷</div>
         <div class="brand-info">
-          <div class="brand-name">FaceCheck ស្កេនមុខចេញចូលធ្វើការ</div>
+          <div class="brand-name">FaceAttend</div>
           <div class="brand-sub" id="greeting">Good morning</div>
         </div>
       </div>
-      <div class="section-label" style="margin-bottom:8px">បំពេញឈ្មោះរបស់អ្នក</div>
+      <div class="section-label" style="margin-bottom:8px">Who are you?</div>
       <div class="search-wrap">
         <span class="si">🔍</span>
         <input type="text" placeholder="Search your name..." id="search-inp" oninput="filterList()">
@@ -2396,6 +2434,7 @@ function showTab(id, el) {
   if (id === 'staff') { renderStaffTable(); renderDeptChart(); }
   if (id === 'logs')  { initLogFilters(); loadLogs(); }
   if (id === 'map')   { initMapFilters(); loadMap(); }
+  if (id === 'salary') { initSalaryFilters(); }
 }
 
 function getPresentSet() {
@@ -2526,16 +2565,27 @@ async function addStaff() {
   const id   = document.getElementById('s-id').value.trim();
   const dept = document.getElementById('s-dept').value;
   const role = document.getElementById('s-role').value.trim();
+  const rate = parseFloat(document.getElementById('s-rate').value) || 0;
   if (!name || !id) { toast('Name and ID are required', 'error'); return; }
   if (staff.find(s => s.id === id)) { toast('Employee ID already exists', 'error'); return; }
   const btn = document.getElementById('btn-add-staff');
   btn.disabled = true; btn.textContent = 'Saving...';
   try {
-    await db.collection('staff').doc(id).set({ name, id, dept, role, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-    ['s-name','s-id','s-role'].forEach(x => document.getElementById(x).value = '');
+    await db.collection('staff').doc(id).set({ name, id, dept, role, hourlyRate: rate, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    ['s-name','s-id','s-role','s-rate'].forEach(x => document.getElementById(x).value = '');
     toast(`${name} added!`, 'success');
   } catch(e) { toast('Error: ' + e.message, 'error'); }
   btn.disabled = false; btn.textContent = '➕ Add Employee';
+}
+async function editRate(id, currentRate) {
+  const input = prompt(`Set hourly rate for this employee ($/hr):`, currentRate || 0);
+  if (input === null) return;
+  const rate = parseFloat(input);
+  if (isNaN(rate) || rate < 0) { toast('Please enter a valid rate', 'error'); return; }
+  try {
+    await db.collection('staff').doc(id).update({ hourlyRate: rate });
+    toast('Hourly rate updated', 'success');
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
 }
 async function removeStaff(id) {
   if (!confirm('Remove this employee?') || !db) return;
@@ -2548,14 +2598,18 @@ function renderStaffTable() {
   const tbody = document.getElementById('staff-tbody');
   if (!tbody) return;
   const list = staff.filter(s => !q || s.name.toLowerCase().includes(q) || s.id.toLowerCase().includes(q) || (s.dept||'').toLowerCase().includes(q));
-  if (!list.length) { tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">${staff.length?'No matches':'No staff registered yet'}</td></tr>`; return; }
+  if (!list.length) { tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">${staff.length?'No matches':'No staff registered yet'}</td></tr>`; return; }
   tbody.innerHTML = list.map(s => `<tr>
     <td><div style="display:flex;align-items:center;gap:10px"><div class="av">${initials(s.name)}</div><div><div style="font-weight:600">${s.name}</div><div style="font-size:11px;color:var(--muted)">${s.role||''}</div></div></div></td>
     <td style="color:var(--subtle);font-size:12px">${s.id}</td>
     <td style="font-size:12px">${s.dept||'—'}</td>
     <td style="font-size:12px;color:var(--muted)">${s.role||'—'}</td>
+    <td style="font-size:12px;font-weight:600">$${(s.hourlyRate||0).toFixed(2)}/hr</td>
     <td><span class="badge ${present.has(s.id)?'present':'absent'}">${present.has(s.id)?'Present':'Absent'}</span></td>
-    <td><button class="btn btn-ghost btn-sm" onclick="removeStaff('${s.id}')">🗑</button></td>
+    <td><div class="btn-row" style="flex-wrap:nowrap">
+      <button class="btn btn-ghost btn-sm" onclick="editRate('${s.id}',${s.hourlyRate||0})" title="Edit hourly rate">💲</button>
+      <button class="btn btn-ghost btn-sm" onclick="removeStaff('${s.id}')">🗑</button>
+    </div></td>
   </tr>`).join('');
 }
 function renderDeptChart() {
@@ -2706,11 +2760,175 @@ async function loadMap() {
   }
 }
 
+// ═══════════════════════════════════════════════════════════
+// SALARY — hourly rate × hours worked, calculated per calendar month
+// ═══════════════════════════════════════════════════════════
+let lastSalaryResult = null;
+
+function initSalaryFilters() {
+  const el = document.getElementById('salary-month');
+  if (el && !el.value) {
+    const now = new Date();
+    el.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  }
+}
+
+async function calculateSalary() {
+  if (!db) { toast('Firebase not connected', 'error'); return; }
+  const monthVal = document.getElementById('salary-month').value; // "YYYY-MM"
+  if (!monthVal) { toast('Pick a month first', 'error'); return; }
+
+  const tbody = document.getElementById('salary-tbody');
+  tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px"><span class="spinner"></span>Calculating...</td></tr>`;
+
+  const [year, month] = monthVal.split('-').map(Number);
+  const rangeStart = new Date(year, month - 1, 1, 0, 0, 0);
+  const rangeEnd   = new Date(year, month, 0, 23, 59, 59); // last day of that month
+
+  try {
+    const snap = await db.collection('logs')
+      .where('timestamp', '>=', rangeStart)
+      .where('timestamp', '<=', rangeEnd)
+      .orderBy('timestamp', 'asc')
+      .get();
+
+    const logs = snap.docs.map(d => {
+      const data = d.data();
+      return { ...data, time: data.timestamp?.toDate?.() || new Date(data.clientTime) };
+    });
+
+    // Group logs by employeeId, then by calendar day
+    const byEmployee = {};
+    logs.forEach(l => {
+      if (!l.employeeId) return;
+      if (!byEmployee[l.employeeId]) byEmployee[l.employeeId] = { name: l.name, dept: l.dept, days: {} };
+      const dayKey = l.time.toDateString();
+      if (!byEmployee[l.employeeId].days[dayKey]) byEmployee[l.employeeId].days[dayKey] = [];
+      byEmployee[l.employeeId].days[dayKey].push(l);
+    });
+
+    const results = [];
+    const flagged = [];
+
+    Object.entries(byEmployee).forEach(([empId, info]) => {
+      const staffRecord = staff.find(s => s.id === empId);
+      const rate = staffRecord?.hourlyRate || 0;
+      let totalHours = 0;
+      let daysPresent = 0;
+
+      Object.entries(info.days).forEach(([dayKey, dayLogs]) => {
+        // Sort this day's events chronologically, then pair each "in" with the
+        // next "out" that follows it. Any leftover unmatched "in" (no out yet)
+        // gets flagged for manual review instead of silently dropped or zeroed.
+        const sorted = [...dayLogs].sort((a,b) => a.time - b.time);
+        let openIn = null;
+        let dayHours = 0;
+        let dayHadPairing = false;
+
+        sorted.forEach(ev => {
+          if (ev.type === 'in') {
+            if (openIn) {
+              // Two check-ins in a row with no check-out between them -- flag the
+              // earlier one, then start tracking the new one.
+              flagged.push({ name: info.name, employeeId: empId, dept: info.dept, time: openIn.time, reason: 'Check-in with no matching check-out before next check-in' });
+            }
+            openIn = ev;
+          } else if (ev.type === 'out') {
+            if (openIn) {
+              const hrs = (ev.time - openIn.time) / 3600000;
+              if (hrs > 0 && hrs < 20) { // sanity cap: ignore impossible >20h single shifts (likely bad data)
+                dayHours += hrs;
+                dayHadPairing = true;
+              }
+              openIn = null;
+            } else {
+              flagged.push({ name: info.name, employeeId: empId, dept: info.dept, time: ev.time, reason: 'Check-out with no matching check-in' });
+            }
+          }
+        });
+
+        if (openIn) {
+          flagged.push({ name: info.name, employeeId: empId, dept: info.dept, time: openIn.time, reason: 'Check-in with no check-out (incomplete day)' });
+        }
+
+        if (dayHadPairing) { totalHours += dayHours; daysPresent += 1; }
+      });
+
+      results.push({
+        employeeId: empId, name: info.name, dept: info.dept,
+        daysPresent, hours: totalHours, rate, pay: totalHours * rate,
+      });
+    });
+
+    results.sort((a,b) => b.pay - a.pay);
+    lastSalaryResult = { month: monthVal, results, flagged };
+    renderSalaryTable(results, flagged);
+  } catch(e) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--rl);padding:20px">Error: ${e.message}</td></tr>`;
+  }
+}
+
+function renderSalaryTable(results, flagged) {
+  const tbody = document.getElementById('salary-tbody');
+  const totalStaff = results.length;
+  const totalHours = results.reduce((s,r) => s + r.hours, 0);
+  const totalPay   = results.reduce((s,r) => s + r.pay, 0);
+
+  document.getElementById('sal-staff').textContent = totalStaff;
+  document.getElementById('sal-hours').textContent = totalHours.toFixed(1);
+  document.getElementById('sal-total').textContent = '$' + totalPay.toFixed(2);
+  document.getElementById('sal-flagged').textContent = flagged.length;
+
+  if (!results.length) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:20px">No check-in activity found for this month</td></tr>`;
+  } else {
+    tbody.innerHTML = results.map(r => `<tr>
+      <td><div style="display:flex;align-items:center;gap:10px"><div class="av">${initials(r.name||'?')}</div><div style="font-weight:600">${r.name||r.employeeId}</div></div></td>
+      <td style="font-size:12px">${r.dept||'—'}</td>
+      <td style="font-size:12px">${r.daysPresent}</td>
+      <td style="font-size:12px">${r.hours.toFixed(2)} hrs</td>
+      <td style="font-size:12px">$${r.rate.toFixed(2)}/hr</td>
+      <td style="font-weight:700;color:var(--gl)">$${r.pay.toFixed(2)}</td>
+      <td>${r.rate === 0 ? '<span class="badge absent" title="No hourly rate set for this employee">No rate set</span>' : ''}</td>
+    </tr>`).join('');
+  }
+
+  const flagsCard = document.getElementById('salary-flags-card');
+  if (flagged.length) {
+    flagsCard.style.display = 'block';
+    document.getElementById('salary-flags-list').innerHTML = flagged
+      .sort((a,b) => b.time - a.time)
+      .map(f => `<div class="log-item out">
+        <div class="log-meta">
+          <div class="log-name">${f.name||f.employeeId}</div>
+          <div class="log-info">${f.dept||''} · ${f.employeeId} · ${fmtDatetime(f.time)}</div>
+        </div>
+        <span class="badge absent" style="white-space:normal;text-align:right;max-width:160px">${f.reason}</span>
+      </div>`).join('');
+  } else {
+    flagsCard.style.display = 'none';
+  }
+}
+
+function exportSalaryCSV() {
+  if (!lastSalaryResult || !lastSalaryResult.results.length) { toast('Calculate salary first', 'info'); return; }
+  let csv = 'Employee,ID,Department,Days Present,Hours Worked,Hourly Rate,Total Pay\n';
+  lastSalaryResult.results.forEach(r => {
+    csv += `"${r.name||''}","${r.employeeId}","${r.dept||''}",${r.daysPresent},${r.hours.toFixed(2)},${r.rate.toFixed(2)},${r.pay.toFixed(2)}\n`;
+  });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download = `payroll_${lastSalaryResult.month}.csv`;
+  a.click(); toast('Payroll exported!', 'success');
+}
+
 // Expose admin functions globally for inline onclick handlers
 window.openCfg = openCfg; window.closeCfg = closeCfg; window.saveConfig = saveConfig;
 window.showTab = showTab; window.printQR = printQR; window.downloadQR = downloadQR;
 window.loadMap = loadMap;
 window.openLocationInMaps = openLocationInMaps;
+window.calculateSalary = calculateSalary; window.exportSalaryCSV = exportSalaryCSV;
+window.editRate = editRate;
 window.addStaff = addStaff; window.removeStaff = removeStaff; window.renderStaffTable = renderStaffTable;
 window.loadLogs = loadLogs; window.exportCSV = exportCSV; window.clearTodayLogs = clearTodayLogs;
 
