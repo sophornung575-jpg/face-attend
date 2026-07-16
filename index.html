@@ -2290,7 +2290,7 @@ const IS_CHECKIN = new URLSearchParams(location.search).has('checkin');
 // Password is stored as a SHA-256 hash in localStorage — never plaintext.
 // Default password is 'admin123'. Admin can change it via the 🔑 button.
 const ADMIN_PW_KEY = 'fa_admin_pw_hash';
-const DEFAULT_PW_HASH = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a'; // SHA-256 of 'admin123'
+const DEFAULT_PW_HASH = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9'; // SHA-256 of 'admin123'
 
 async function sha256(message) {
   if (crypto && crypto.subtle) {
