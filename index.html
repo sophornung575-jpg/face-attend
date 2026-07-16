@@ -141,6 +141,10 @@ input,select{font-family:inherit;-webkit-appearance:none}
 
 #extrapay-modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:9998}
 #extrapay-modal.open{display:flex}
+#ep-picker-modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:9998}
+#ep-picker-modal.open{display:flex}
+.ep-picker-item{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;text-align:left;width:100%;cursor:pointer}
+.ep-picker-item:hover{border-color:var(--purple)}
 .ep-item{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:13px}
 .ep-item-cat{flex:1;font-weight:600}
 .ep-item-amt{font-weight:700;color:var(--gl)}
@@ -263,6 +267,25 @@ input,select{font-family:inherit;-webkit-appearance:none}
 <!-- ════════════════════════════════════════════════════════ -->
 <div id="admin-view">
 
+  <!-- Admin Login Screen -->
+  <div id="admin-login" style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg)">
+    <div style="background:var(--card);border:1px solid var(--border2);border-radius:16px;padding:36px;width:100%;max-width:360px;text-align:center">
+      <div style="width:56px;height:56px;background:var(--pd);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto 16px">📷</div>
+      <div style="font-size:20px;font-weight:800;color:var(--pl);margin-bottom:4px">FaceAttend</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:28px">Admin Dashboard</div>
+      <div class="field" style="text-align:left">
+        <label>Password</label>
+        <input type="password" id="admin-pw-input" placeholder="Enter admin password" onkeydown="if(event.key==='Enter')doAdminLogin()">
+      </div>
+      <button class="btn btn-purple" style="width:100%;padding:12px;margin-top:4px;font-size:14px" onclick="doAdminLogin()">Sign In</button>
+      <div id="admin-login-err" style="margin-top:12px;font-size:12px;color:var(--rl);min-height:16px"></div>
+      <div style="margin-top:20px;font-size:11px;color:var(--muted)">Default password: <code style="background:var(--surface);padding:2px 6px;border-radius:4px">admin123</code></div>
+    </div>
+  </div>
+
+  <!-- Admin Dashboard (hidden until logged in) -->
+  <div id="admin-dashboard-wrap" class="hidden">
+
   <div id="config-banner" class="hidden">
     <span class="cb-icon">⚙️</span>
     <span class="cb-text">Firebase not configured — click to set up your project credentials</span>
@@ -271,22 +294,24 @@ input,select{font-family:inherit;-webkit-appearance:none}
 
   <header id="admin-header">
     <div class="logo">
-      <div class="logo-icon"></div>
+      <div class="logo-icon">📷</div>
       <div class="logo-text">FaceAttend Admin</div>
     </div>
     <div class="hdr-right">
       <div class="conn-dot" id="conn-dot" title="Firebase connection"></div>
       <span id="live-clock">--:--:--</span>
+      <button class="btn btn-ghost btn-sm" onclick="changeAdminPassword()" title="Change password">🔑</button>
+      <button class="btn btn-ghost btn-sm" onclick="adminLogout()">Sign Out</button>
     </div>
   </header>
 
   <div class="tab-bar">
-    <button class="tab active" onclick="showTab('dashboard',this)"> Dashboard</button>
-    <button class="tab" onclick="showTab('qr',this)"> QR Code</button>
-    <button class="tab" onclick="showTab('staff',this)"> Staff</button>
-    <button class="tab" onclick="showTab('logs',this)"> Logs</button>
-    <button class="tab" onclick="showTab('map',this)"> Map</button>
-    <button class="tab" onclick="showTab('salary',this)"> Salary</button>
+    <button class="tab active" onclick="showTab('dashboard',this)">🏠 Dashboard</button>
+    <button class="tab" onclick="showTab('qr',this)">📱 QR Code</button>
+    <button class="tab" onclick="showTab('staff',this)">👥 Staff</button>
+    <button class="tab" onclick="showTab('logs',this)">📋 Logs</button>
+    <button class="tab" onclick="showTab('map',this)">🗺️ Map</button>
+    <button class="tab" onclick="showTab('salary',this)">💰 Salary</button>
   </div>
 
   <!-- DASHBOARD -->
@@ -396,7 +421,9 @@ input,select{font-family:inherit;-webkit-appearance:none}
     <div class="card">
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
         <div class="field" style="margin:0;min-width:140px;flex:1"><label>Date</label><input type="date" id="log-date"></div>
-        <div class="field" style="margin:0;min-width:130px;flex:1"><label>Type</label>
+        <div class="field" style="margin:0;min-width:140px;flex:1"><label>Employee</label>
+          <select id="log-employee"><option value="">All Employees</option></select></div>
+        <div class="field" style="margin:0;min-width:110px;flex:1"><label>Type</label>
           <select id="log-type"><option value="">All</option><option value="in">Check-In</option><option value="out">Check-Out</option></select></div>
         <button class="btn btn-ghost btn-sm" style="height:36px" onclick="loadLogs()">🔍 Filter</button>
         <button class="btn btn-ghost btn-sm" style="height:36px" onclick="exportCSV()">📄 Export CSV</button>
@@ -444,7 +471,10 @@ input,select{font-family:inherit;-webkit-appearance:none}
     </div>
 
     <div class="card">
-      <div class="card-title">📋 Payroll Breakdown</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div class="card-title" style="margin-bottom:0">📋 Payroll Breakdown</div>
+        <button class="btn btn-ghost btn-sm" onclick="openExtraPayPicker()">💵 Add Extra Pay for Employee...</button>
+      </div>
       <div style="overflow-x:auto">
         <table class="tbl"><thead><tr><th>Employee</th><th>Department</th><th>Days</th><th>Hours</th><th>Rate</th><th>Base Pay</th><th>Extra Pay</th><th>Total</th><th></th></tr></thead>
         <tbody id="salary-tbody"><tr><td colspan="9" style="text-align:center;color:var(--muted);padding:20px">Select a month and click Calculate</td></tr></tbody></table>
@@ -478,6 +508,17 @@ input,select{font-family:inherit;-webkit-appearance:none}
     </div>
   </div>
 
+  <!-- Extra Pay Employee Picker Modal -->
+  <div id="ep-picker-modal">
+    <div class="cfg-inner">
+      <div class="cfg-title">💵 Add Extra Pay</div>
+      <div class="cfg-sub">Select any employee — even ones with zero hours this month — to give them an allowance or bonus.</div>
+      <input type="text" id="ep-picker-search" placeholder="🔍 Search employee..." style="width:100%;padding:9px 12px;background:var(--surface);border:1px solid var(--border2);border-radius:7px;color:var(--text);font-size:13px;outline:none;margin-bottom:12px" oninput="renderExtraPayPickerList()">
+      <div id="ep-picker-list" style="display:flex;flex-direction:column;gap:6px;max-height:280px;overflow-y:auto;margin-bottom:14px"></div>
+      <button class="btn btn-ghost" style="width:100%" onclick="closeExtraPayPicker()">Cancel</button>
+    </div>
+  </div>
+
   <!-- Firebase Config Modal -->
   <div id="cfg-modal">
     <div class="cfg-inner">
@@ -499,7 +540,9 @@ input,select{font-family:inherit;-webkit-appearance:none}
     </div>
   </div>
 
-</div>
+  </div><!-- end admin-dashboard-wrap -->
+
+</div><!-- end admin-view -->
 
 <!-- ════════════════════════════════════════════════════════ -->
 <!-- EMPLOYEE CHECK-IN VIEW (shown when URL has ?checkin)       -->
@@ -510,7 +553,7 @@ input,select{font-family:inherit;-webkit-appearance:none}
   <div class="screen active" id="screen-empconfig">
     <div class="cfg-card">
       <div class="cfg-logo">
-        <div class="ic"></div>
+        <div class="ic">📷</div>
         <h1>FaceAttend</h1>
         <p>Employee Check-In</p>
       </div>
@@ -571,7 +614,7 @@ input,select{font-family:inherit;-webkit-appearance:none}
     </div>
     <div class="cam-bottom">
       <div style="width:46px"></div>
-      <button class="shutter" onclick="snap()"></button>
+      <button class="shutter" onclick="snap()">📸</button>
       <button class="flip-cam" onclick="flipCam()">🔄</button>
     </div>
   </div>
@@ -2243,6 +2286,79 @@ var qrcode = function() {
 // ═══════════════════════════════════════════════════════════
 const IS_CHECKIN = new URLSearchParams(location.search).has('checkin');
 
+// ═══ ADMIN PASSWORD AUTH ═══
+// Password is stored as a SHA-256 hash in localStorage — never plaintext.
+// Default password is 'admin123'. Admin can change it via the 🔑 button.
+const ADMIN_PW_KEY = 'fa_admin_pw_hash';
+const DEFAULT_PW_HASH = '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a'; // SHA-256 of 'admin123'
+
+async function sha256(message) {
+  if (crypto && crypto.subtle) {
+    const msgBuffer = new TextEncoder().encode(message);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    return Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2,'0')).join('');
+  }
+  // Fallback: simple non-cryptographic hash (only for environments without Web Crypto — NOT for production)
+  let h = 5381;
+  for (let i = 0; i < message.length; i++) h = ((h << 5) + h) ^ message.charCodeAt(i);
+  return (h >>> 0).toString(16).padStart(8,'0').repeat(8);
+}
+
+function getAdminPwHash() {
+  return localStorage.getItem(ADMIN_PW_KEY) || DEFAULT_PW_HASH;
+}
+
+async function doAdminLogin() {
+  const pw = document.getElementById('admin-pw-input').value;
+  if (!pw) { document.getElementById('admin-login-err').textContent = 'Enter the admin password'; return; }
+  const hash = await sha256(pw);
+  if (hash === getAdminPwHash()) {
+    sessionStorage.setItem('fa_admin_auth', '1');
+    document.getElementById('admin-login').style.display = 'none';
+    document.getElementById('admin-dashboard-wrap').classList.remove('hidden');
+    initAdminAfterLogin();
+  } else {
+    document.getElementById('admin-login-err').textContent = 'Incorrect password';
+    document.getElementById('admin-pw-input').value = '';
+    document.getElementById('admin-pw-input').focus();
+  }
+}
+
+function adminLogout() {
+  sessionStorage.removeItem('fa_admin_auth');
+  document.getElementById('admin-dashboard-wrap').classList.add('hidden');
+  document.getElementById('admin-login').style.display = 'flex';
+  document.getElementById('admin-pw-input').value = '';
+  document.getElementById('admin-login-err').textContent = '';
+}
+
+async function changeAdminPassword() {
+  const current = prompt('Enter your CURRENT password to confirm identity:');
+  if (!current) return;
+  const currentHash = await sha256(current);
+  if (currentHash !== getAdminPwHash()) { toast('Current password is incorrect', 'error'); return; }
+  const newPw = prompt('Enter your NEW password (min 6 characters):');
+  if (!newPw || newPw.length < 6) { toast('Password must be at least 6 characters', 'error'); return; }
+  const confirm = prompt('Confirm new password:');
+  if (newPw !== confirm) { toast('Passwords do not match', 'error'); return; }
+  const newHash = await sha256(newPw);
+  localStorage.setItem(ADMIN_PW_KEY, newHash);
+  toast('Password changed successfully', 'success');
+}
+
+function checkAdminSession() {
+  if (!IS_CHECKIN) {
+    if (sessionStorage.getItem('fa_admin_auth') === '1') {
+      document.getElementById('admin-login').style.display = 'none';
+      document.getElementById('admin-dashboard-wrap').classList.remove('hidden');
+      return true;
+    }
+    return false;
+  }
+  return false;
+}
+
+
 if (IS_CHECKIN) {
   document.getElementById('admin-view').classList.add('hidden');
   document.getElementById('employee-view').classList.remove('hidden');
@@ -2423,11 +2539,19 @@ function initAdminFirebase() {
 }
 
 setInterval(() => { document.getElementById('live-clock').textContent = new Date().toLocaleTimeString(); }, 1000);
-document.getElementById('live-clock').textContent = new Date().toLocaleTimeString();
-document.getElementById('dash-datestr').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
 
-if (cfg) initAdminFirebase();
-else document.getElementById('config-banner').classList.remove('hidden');
+function initAdminAfterLogin() {
+  document.getElementById('live-clock').textContent = new Date().toLocaleTimeString();
+  document.getElementById('dash-datestr').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  if (cfg) initAdminFirebase();
+  else document.getElementById('config-banner').classList.remove('hidden');
+}
+
+// If the admin already logged in earlier this browser session, skip the login screen
+if (!IS_CHECKIN) {
+  const alreadyLoggedIn = checkAdminSession();
+  if (alreadyLoggedIn) initAdminAfterLogin();
+}
 
 function startRealtimeListeners() {
   db.collection('staff').orderBy('name').onSnapshot(snap => {
@@ -2655,11 +2779,18 @@ function renderDeptChart() {
 }
 
 let loadedLogs = [];
-function initLogFilters() { document.getElementById('log-date').value = new Date().toISOString().slice(0,10); }
+function initLogFilters() {
+  document.getElementById('log-date').value = new Date().toISOString().slice(0,10);
+  // Populate employee dropdown from the live staff list
+  const sel = document.getElementById('log-employee');
+  sel.innerHTML = '<option value="">All Employees</option>' +
+    staff.map(s => `<option value="${s.id}">${s.name} (${s.id})</option>`).join('');
+}
 async function loadLogs() {
   if (!db) { document.getElementById('log-list').innerHTML = '<div style="color:var(--muted);font-size:13px;padding:20px;text-align:center">Firebase not connected</div>'; return; }
   const dateVal = document.getElementById('log-date')?.value;
   const typeVal = document.getElementById('log-type')?.value;
+  const empVal  = document.getElementById('log-employee')?.value;
   document.getElementById('log-list').innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px;text-align:center"><span class="spinner"></span>Loading...</div>';
   try {
     let q = db.collection('logs').orderBy('timestamp','desc').limit(200);
@@ -2668,17 +2799,32 @@ async function loadLogs() {
       const d2 = new Date(dateVal); d2.setHours(23,59,59,999);
       q = q.where('timestamp','>=',d).where('timestamp','<=',d2);
     }
+    if (empVal) {
+      q = q.where('employeeId','==',empVal);
+    }
     const snap = await q.get();
     loadedLogs = snap.docs.map(d => ({ docId: d.id, ...d.data(), time: d.data().timestamp?.toDate?.()?.toISOString() || new Date().toISOString() }));
     let list = loadedLogs;
     if (typeVal) list = list.filter(l => l.type === typeVal);
-    renderLogList(list);
-  } catch(e) { document.getElementById('log-list').innerHTML = `<div style="color:var(--rl);font-size:13px;padding:20px;text-align:center">Error: ${e.message}</div>`; }
+    const empName = empVal ? staff.find(s=>s.id===empVal)?.name : null;
+    document.getElementById('log-list').style.setProperty('--filter-label', empName ? `"${empName}"` : '""');
+    renderLogList(list, empName);
+  } catch(e) {
+    const isIndexError = e.message && e.message.includes('index');
+    document.getElementById('log-list').innerHTML = `<div style="color:var(--rl);font-size:13px;padding:20px;text-align:center">
+      ${isIndexError
+        ? 'Firestore needs a composite index for employee + date filtering.<br>Open the Firebase Console → Firestore → Indexes and create an index for the <code>logs</code> collection on <code>employeeId</code> (Ascending) + <code>timestamp</code> (Descending).<br>Or filter without selecting an employee first.'
+        : 'Error: ' + e.message}
+    </div>`;
+  }
 }
-function renderLogList(list) {
+function renderLogList(list, empName) {
   const el = document.getElementById('log-list');
   if (!el) return;
-  if (!list.length) { el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:20px;text-align:center">No records found</div>'; return; }
+  if (!list.length) {
+    el.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:20px;text-align:center">No records found${empName ? ` for ${empName}` : ''}</div>`;
+    return;
+  }
   el.innerHTML = list.map(logHtml).join('');
 }
 async function clearTodayLogs() {
@@ -2977,13 +3123,47 @@ function renderSalaryTable(results, flagged) {
 
 function exportSalaryCSV() {
   if (!lastSalaryResult || !lastSalaryResult.results.length) { toast('Calculate salary first', 'info'); return; }
-  let csv = 'Employee,ID,Department,Days Present,Hours Worked,Hourly Rate,Base Pay,Extra Pay,Total Pay\n';
-  lastSalaryResult.results.forEach(r => {
+  const { month, results, flagged } = lastSalaryResult;
+
+  let csv = `Payroll Summary — ${formatMonthLabel(month)}\n\n`;
+
+  // ── Section 1: Payroll Breakdown ──
+  csv += 'PAYROLL BREAKDOWN\n';
+  csv += 'Employee,ID,Department,Days Present,Hours Worked,Hourly Rate,Base Pay,Extra Pay,Total Pay\n';
+  results.forEach(r => {
     csv += `"${r.name||''}","${r.employeeId}","${r.dept||''}",${r.daysPresent},${r.hours.toFixed(2)},${r.rate.toFixed(2)},${r.basePay.toFixed(2)},${r.extraTotal.toFixed(2)},${r.pay.toFixed(2)}\n`;
   });
+  const totalHours = results.reduce((s,r) => s + r.hours, 0);
+  const totalExtra = results.reduce((s,r) => s + r.extraTotal, 0);
+  const totalPay   = results.reduce((s,r) => s + r.pay, 0);
+  csv += `TOTAL,,,,${totalHours.toFixed(2)},,,${totalExtra.toFixed(2)},${totalPay.toFixed(2)}\n`;
+
+  // ── Section 2: Extra Pay Detail (so each bonus/allowance line item is traceable) ──
+  const allExtraItems = results.flatMap(r => (r.extraItems||[]).map(item => ({ ...item, name: r.name })));
+  csv += '\nEXTRA PAY DETAIL\n';
+  if (allExtraItems.length) {
+    csv += 'Employee,ID,Category,Amount\n';
+    allExtraItems.forEach(item => {
+      csv += `"${item.name||''}","${item.employeeId}","${item.category}",${(item.amount||0).toFixed(2)}\n`;
+    });
+  } else {
+    csv += 'No extra pay items recorded this month\n';
+  }
+
+  // ── Section 3: Flagged / Needs Review (excluded from totals above) ──
+  csv += '\nFLAGGED — EXCLUDED FROM HOURS & PAY (needs manual review)\n';
+  if (flagged.length) {
+    csv += 'Employee,ID,Department,Date/Time,Reason\n';
+    [...flagged].sort((a,b) => a.time - b.time).forEach(f => {
+      csv += `"${f.name||''}","${f.employeeId}","${f.dept||''}","${fmtDatetime(f.time)}","${f.reason}"\n`;
+    });
+  } else {
+    csv += 'No flagged entries this month\n';
+  }
+
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  a.download = `payroll_${lastSalaryResult.month}.csv`;
+  a.download = `payroll_${month}.csv`;
   a.click(); toast('Payroll exported!', 'success');
 }
 
@@ -3013,6 +3193,47 @@ function formatMonthLabel(monthVal) {
   if (!monthVal) return 'this month';
   const [y,m] = monthVal.split('-').map(Number);
   return new Date(y, m-1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+
+function openExtraPayPicker() {
+  const monthVal = document.getElementById('salary-month').value;
+  if (!monthVal) { toast('Pick a month first', 'error'); return; }
+  document.getElementById('ep-picker-search').value = '';
+  renderExtraPayPickerList();
+  document.getElementById('ep-picker-modal').classList.add('open');
+}
+function closeExtraPayPicker() {
+  document.getElementById('ep-picker-modal').classList.remove('open');
+}
+function renderExtraPayPickerList() {
+  const q = (document.getElementById('ep-picker-search').value || '').toLowerCase();
+  const list = staff.filter(s => !q || s.name.toLowerCase().includes(q) || s.id.toLowerCase().includes(q));
+  const el = document.getElementById('ep-picker-list');
+  if (!list.length) { el.innerHTML = '<p style="color:var(--muted);font-size:13px;text-align:center;padding:10px 0">No staff found</p>'; return; }
+  el.innerHTML = list.map(s => `<button class="ep-picker-item" onclick='pickExtraPayEmployee("${s.id}","${(s.name||'').replace(/"/g,'&quot;')}")'>
+    <div class="av">${initials(s.name)}</div>
+    <div><div style="font-weight:600;font-size:13px">${s.name}</div><div style="font-size:11px;color:var(--muted)">${s.dept||''} · ${s.id}</div></div>
+  </button>`).join('');
+}
+async function pickExtraPayEmployee(employeeId, employeeName) {
+  closeExtraPayPicker();
+  const monthVal = document.getElementById('salary-month').value;
+  // Ensure currentMonthExtraPay reflects the right month even if Calculate
+  // was never clicked yet for this specific month/employee combination.
+  if (!lastSalaryResult || lastSalaryResult.month !== monthVal) {
+    if (db) {
+      const extraSnap = await db.collection('extraPay').where('month', '==', monthVal).get();
+      const extraByEmployee = {};
+      extraSnap.docs.forEach(d => {
+        const data = d.data();
+        if (!extraByEmployee[data.employeeId]) extraByEmployee[data.employeeId] = [];
+        extraByEmployee[data.employeeId].push({ docId: d.id, ...data });
+      });
+      currentMonthExtraPay = extraByEmployee;
+      lastSalaryResult = { month: monthVal, results: lastSalaryResult?.results || [], flagged: lastSalaryResult?.flagged || [] };
+    }
+  }
+  openExtraPayModal(employeeId, employeeName);
 }
 function renderExtraPayList() {
   const items = currentMonthExtraPay[activeExtraPayEmployee] || [];
@@ -3067,7 +3288,10 @@ window.openLocationInMaps = openLocationInMaps;
 window.calculateSalary = calculateSalary; window.exportSalaryCSV = exportSalaryCSV;
 window.openExtraPayModal = openExtraPayModal; window.closeExtraPayModal = closeExtraPayModal;
 window.addExtraPayItem = addExtraPayItem; window.deleteExtraPayItem = deleteExtraPayItem;
+window.openExtraPayPicker = openExtraPayPicker; window.closeExtraPayPicker = closeExtraPayPicker;
+window.renderExtraPayPickerList = renderExtraPayPickerList; window.pickExtraPayEmployee = pickExtraPayEmployee;
 window.editRate = editRate;
+window.doAdminLogin = doAdminLogin; window.adminLogout = adminLogout; window.changeAdminPassword = changeAdminPassword;
 window.addStaff = addStaff; window.removeStaff = removeStaff; window.renderStaffTable = renderStaffTable;
 window.loadLogs = loadLogs; window.exportCSV = exportCSV; window.clearTodayLogs = clearTodayLogs;
 
