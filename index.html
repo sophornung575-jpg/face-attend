@@ -279,7 +279,6 @@ input,select{font-family:inherit;-webkit-appearance:none}
       </div>
       <button class="btn btn-purple" style="width:100%;padding:12px;margin-top:4px;font-size:14px" onclick="doAdminLogin()">Sign In</button>
       <div id="admin-login-err" style="margin-top:12px;font-size:12px;color:var(--rl);min-height:16px"></div>
-      <div style="margin-top:20px;font-size:11px;color:var(--muted)">Default password: <code style="background:var(--surface);padding:2px 6px;border-radius:4px">admin123</code></div>
     </div>
   </div>
 
@@ -312,6 +311,7 @@ input,select{font-family:inherit;-webkit-appearance:none}
     <button class="tab" onclick="showTab('logs',this)">📋 Logs</button>
     <button class="tab" onclick="showTab('map',this)">🗺️ Map</button>
     <button class="tab" onclick="showTab('salary',this)">💰 Salary</button>
+    <button class="tab" onclick="showTab('settings',this)">⚙️ Settings</button>
   </div>
 
   <!-- DASHBOARD -->
@@ -510,7 +510,55 @@ input,select{font-family:inherit;-webkit-appearance:none}
     </div>
   </div>
 
+  <!-- SETTINGS -->
+  <div class="page" id="page-settings">
+    <div class="page-title">Settings</div>
+    <div class="page-sub">Configure notifications and admin preferences</div>
+
+    <div class="card">
+      <div class="card-title">📨 Telegram Notifications</div>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 16px">Send a real-time message to your Telegram whenever an employee checks in or out. You need a bot token from @BotFather and a chat ID.</p>
+
+      <div class="field"><label>Bot Token</label>
+        <input type="text" id="tg-token" placeholder="e.g. 7412854123:AAFxyz..." autocomplete="off"></div>
+      <div class="field"><label>Chat ID</label>
+        <input type="text" id="tg-chatid" placeholder="e.g. 123456789 or -987654321 for groups" autocomplete="off"></div>
+
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+          <input type="checkbox" id="tg-enabled" style="width:16px;height:16px;accent-color:var(--purple)">
+          Enable Telegram notifications
+        </label>
+      </div>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-purple btn-sm" onclick="saveTelegramSettings()">💾 Save</button>
+        <button class="btn btn-ghost btn-sm" onclick="testTelegramNotification()">🔔 Send Test Message</button>
+      </div>
+      <div id="tg-status" style="margin-top:10px;font-size:12px;min-height:16px"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🔔 Notification Format</div>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 10px">Each notification will look like this:</p>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:13px;font-family:monospace;line-height:1.7;color:var(--subtle)">
+        ✅ Check-In<br>
+        👤 Sophea Chan (EMP-001)<br>
+        🏢 Engineering<br>
+        🕐 09:02:35 AM<br>
+        📍 Location captured
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🔐 Admin Password</div>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 14px">Change the password used to access this dashboard.</p>
+      <button class="btn btn-ghost btn-sm" onclick="changeAdminPassword()">🔑 Change Password</button>
+    </div>
+  </div>
+
   <!-- Extra Pay Employee Picker Modal -->
+
   <div id="ep-picker-modal">
     <div class="cfg-inner">
       <div class="cfg-title">💵 Add Extra Pay</div>
@@ -2590,6 +2638,7 @@ function showTab(id, el) {
   if (id === 'logs')  { initLogFilters(); loadLogs(); }
   if (id === 'map')   { initMapFilters(); loadMap(); }
   if (id === 'salary') { initSalaryFilters(); }
+  if (id === 'settings') { loadTelegramSettings(); }
 }
 
 function getPresentSet() {
@@ -3305,7 +3354,96 @@ window.addExtraPayItem = addExtraPayItem; window.deleteExtraPayItem = deleteExtr
 window.openExtraPayPicker = openExtraPayPicker; window.closeExtraPayPicker = closeExtraPayPicker;
 window.renderExtraPayPickerList = renderExtraPayPickerList; window.pickExtraPayEmployee = pickExtraPayEmployee;
 window.editRate = editRate;
+// ═══════════════════════════════════════════════════════════
+// TELEGRAM NOTIFICATIONS
+// ═══════════════════════════════════════════════════════════
+const TG_KEY = 'fa_telegram_settings';
+
+function getTelegramSettings() {
+  try { return JSON.parse(localStorage.getItem(TG_KEY) || '{}'); } catch { return {}; }
+}
+
+function loadTelegramSettings() {
+  const s = getTelegramSettings();
+  document.getElementById('tg-token').value   = s.token   || '';
+  document.getElementById('tg-chatid').value  = s.chatId  || '';
+  document.getElementById('tg-enabled').checked = !!s.enabled;
+}
+
+function saveTelegramSettings() {
+  const token  = document.getElementById('tg-token').value.trim();
+  const chatId = document.getElementById('tg-chatid').value.trim();
+  const enabled = document.getElementById('tg-enabled').checked;
+  localStorage.setItem(TG_KEY, JSON.stringify({ token, chatId, enabled }));
+  const statusEl = document.getElementById('tg-status');
+  statusEl.style.color = 'var(--gl)';
+  statusEl.textContent = '✓ Settings saved';
+  setTimeout(() => statusEl.textContent = '', 3000);
+}
+
+async function sendTelegramMessage(text) {
+  const s = getTelegramSettings();
+  if (!s.enabled || !s.token || !s.chatId) return; // silently skip if not configured
+  try {
+    await fetch(`https://api.telegram.org/bot${s.token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: s.chatId, text, parse_mode: 'HTML' }),
+    });
+  } catch(e) {
+    console.warn('Telegram notification failed:', e.message);
+  }
+}
+
+async function testTelegramNotification() {
+  const token  = document.getElementById('tg-token').value.trim();
+  const chatId = document.getElementById('tg-chatid').value.trim();
+  const statusEl = document.getElementById('tg-status');
+  if (!token || !chatId) {
+    statusEl.style.color = 'var(--rl)';
+    statusEl.textContent = '✗ Enter bot token and chat ID first';
+    return;
+  }
+  statusEl.style.color = 'var(--muted)';
+  statusEl.textContent = 'Sending test message...';
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: '✅ FaceAttend connected!\n\nYour attendance notifications are working correctly.',
+        parse_mode: 'HTML'
+      }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      statusEl.style.color = 'var(--gl)';
+      statusEl.textContent = '✓ Test message sent! Check your Telegram.';
+    } else {
+      statusEl.style.color = 'var(--rl)';
+      statusEl.textContent = '✗ Failed: ' + (data.description || 'Unknown error');
+    }
+  } catch(e) {
+    statusEl.style.color = 'var(--rl)';
+    statusEl.textContent = '✗ Network error: ' + e.message;
+  }
+}
+
+function buildCheckinMessage(entry) {
+  const isIn = entry.type === 'in';
+  const icon = isIn ? '✅' : '🚪';
+  const label = isIn ? 'Check-In' : 'Check-Out';
+  const time = entry.clientTime
+    ? new Date(entry.clientTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const locLine = entry.location ? '\n📍 Location captured' : '';
+  return `${icon} <b>${label}</b>\n👤 ${entry.name} (${entry.employeeId})\n🏢 ${entry.dept || '—'}\n🕐 ${time}${locLine}`;
+}
+
 window.doAdminLogin = doAdminLogin; window.adminLogout = adminLogout; window.changeAdminPassword = changeAdminPassword;
+window.saveTelegramSettings = saveTelegramSettings; window.testTelegramNotification = testTelegramNotification;
+window.loadTelegramSettings = loadTelegramSettings;
 window.addStaff = addStaff; window.removeStaff = removeStaff; window.renderStaffTable = renderStaffTable;
 window.loadLogs = loadLogs; window.exportCSV = exportCSV; window.clearTodayLogs = clearTodayLogs;
 window.clearLogDateFilter = clearLogDateFilter;
@@ -3526,6 +3664,7 @@ async function submitCheckin() {
       timestamp: firebase.firestore.FieldValue.serverTimestamp(), clientTime: new Date().toISOString()
     };
     await db.collection('logs').add(entry);
+    sendTelegramMessage(buildCheckinMessage(entry)); // fire-and-forget, never blocks check-in
     showSuccess(entry);
   } catch(e) {
     document.getElementById('err-msg').textContent = 'Save failed: ' + e.message;
