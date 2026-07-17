@@ -2869,18 +2869,13 @@ async function loadLogs() {
   const empVal  = document.getElementById('log-employee')?.value;
   document.getElementById('log-list').innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px;text-align:center"><span class="spinner"></span>Loading...</div>';
   try {
-    let q = db.collection('logs').orderBy('timestamp','desc').limit(500);
-    if (fromVal) {
-      const d = new Date(fromVal); d.setHours(0,0,0,0);
-      q = q.where('timestamp','>=',d);
-    }
-    if (toVal) {
-      const d2 = new Date(toVal); d2.setHours(23,59,59,999);
-      q = q.where('timestamp','<=',d2);
-    }
-    if (empVal) {
-      q = q.where('employeeId','==',empVal);
-    }
+    let q = db.collection('logs');
+    // Apply equality filter FIRST (required by Firestore composite index rules),
+    // then range filters, then orderBy — this matches the index field order.
+    if (empVal) q = q.where('employeeId','==',empVal);
+    if (fromVal) { const d = new Date(fromVal); d.setHours(0,0,0,0); q = q.where('timestamp','>=',d); }
+    if (toVal)   { const d2 = new Date(toVal); d2.setHours(23,59,59,999); q = q.where('timestamp','<=',d2); }
+    q = q.orderBy('timestamp','desc').limit(500);
     const snap = await q.get();
     loadedLogs = snap.docs.map(d => ({ docId: d.id, ...d.data(), time: d.data().timestamp?.toDate?.()?.toISOString() || new Date().toISOString() }));
     let list = loadedLogs;
@@ -2888,10 +2883,10 @@ async function loadLogs() {
     const empName = empVal ? staff.find(s=>s.id===empVal)?.name : null;
     renderLogList(list, empName);
   } catch(e) {
-    const isIndexError = e.message && e.message.includes('index');
+    const isIndexError = e.message && (e.message.includes('index') || e.message.includes('Index'));
     document.getElementById('log-list').innerHTML = `<div style="color:var(--rl);font-size:13px;padding:20px;text-align:center">
       ${isIndexError
-        ? 'Firestore needs a composite index for employee + date filtering.<br>Open Firebase Console → Firestore → Indexes → Create index on <code>logs</code>: <code>employeeId</code> (Asc) + <code>timestamp</code> (Desc).'
+        ? 'Firestore composite index needed. Open Firebase Console → Firestore → Indexes and confirm the index on <code>logs</code> (<code>employeeId</code> Asc + <code>timestamp</code> Desc) is Enabled.'
         : 'Error: ' + e.message}
     </div>`;
   }
