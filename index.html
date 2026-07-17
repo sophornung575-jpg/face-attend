@@ -2449,6 +2449,54 @@ const initials = n => (n||'?').split(' ').map(x=>x[0]).join('').substring(0,2).t
 const fmtTime = d => new Date(d).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
 const fmtDatetime = d => new Date(d).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
 
+// ── Telegram (shared: called from employee check-in flow) ──
+const TG_KEY_SHARED = 'fa_telegram_settings';
+function getTelegramSettings() {
+  try { return JSON.parse(localStorage.getItem(TG_KEY_SHARED) || '{}'); } catch { return {}; }
+}
+async function sendTelegramMessage(text) {
+  const s = getTelegramSettings();
+  if (!s.enabled || !s.token || !s.chatId) return;
+  try {
+    await fetch(`https://api.telegram.org/bot${s.token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: s.chatId, text, parse_mode: 'HTML' }),
+    });
+  } catch(e) { console.warn('Telegram notification failed:', e.message); }
+}
+function getPunctualityStatus(entry) {
+  try { var schedules = JSON.parse(localStorage.getItem('fa_dept_schedules') || '{}'); } catch { var schedules = {}; }
+  const dept = entry.dept || '';
+  const schedule = schedules[dept] || Object.entries(schedules).find(([k]) => k.toLowerCase() === dept.toLowerCase())?.[1];
+  if (!schedule) return null;
+  const checkTime = entry.clientTime ? new Date(entry.clientTime) : new Date();
+  const checkMinutes = checkTime.getHours() * 60 + checkTime.getMinutes();
+  if (entry.type === 'in') {
+    const [h,m] = schedule.startTime.split(':').map(Number);
+    const startMinutes = h * 60 + m;
+    if (checkMinutes <= startMinutes) return { label: '✅ On Time' };
+    return { label: `⚠️ Late by ${checkMinutes - startMinutes} min (expected ${schedule.startTime})` };
+  } else {
+    const [h,m] = schedule.endTime.split(':').map(Number);
+    const endMinutes = h * 60 + m;
+    if (checkMinutes >= endMinutes) return { label: '✅ On Time' };
+    return { label: `🚪 Left Early by ${endMinutes - checkMinutes} min (expected ${schedule.endTime})` };
+  }
+}
+function buildCheckinMessage(entry) {
+  const isIn = entry.type === 'in';
+  const icon  = isIn ? '✅' : '🚪';
+  const label = isIn ? 'Check-In' : 'Check-Out';
+  const time  = entry.clientTime
+    ? new Date(entry.clientTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const locLine   = entry.location ? '\n📍 Location captured' : '';
+  const punct     = getPunctualityStatus(entry);
+  const punctLine = punct ? `\n${punct.label}` : '';
+  return `${icon} <b>${label}</b>\n👤 ${entry.name} (${entry.employeeId})\n🏢 ${entry.dept || '—'}\n🕐 ${time}${locLine}${punctLine}`;
+}
+
 function toast(msg, type='info') {
   const t = document.getElementById('toast');
   t.textContent = msg; t.className = 'show ' + type;
@@ -3373,13 +3421,10 @@ window.openExtraPayPicker = openExtraPayPicker; window.closeExtraPayPicker = clo
 window.renderExtraPayPickerList = renderExtraPayPickerList; window.pickExtraPayEmployee = pickExtraPayEmployee;
 window.editRate = editRate;
 // ═══════════════════════════════════════════════════════════
-// TELEGRAM NOTIFICATIONS
+// TELEGRAM NOTIFICATIONS (admin UI — settings save/load/test)
+// Core send functions are in SHARED HELPERS above
 // ═══════════════════════════════════════════════════════════
-const TG_KEY = 'fa_telegram_settings';
-
-function getTelegramSettings() {
-  try { return JSON.parse(localStorage.getItem(TG_KEY) || '{}'); } catch { return {}; }
-}
+const TG_KEY = TG_KEY_SHARED; // same key, referenced here for clarity
 
 function loadTelegramSettings() {
   const s = getTelegramSettings();
@@ -3397,20 +3442,6 @@ function saveTelegramSettings() {
   statusEl.style.color = 'var(--gl)';
   statusEl.textContent = '✓ Settings saved';
   setTimeout(() => statusEl.textContent = '', 3000);
-}
-
-async function sendTelegramMessage(text) {
-  const s = getTelegramSettings();
-  if (!s.enabled || !s.token || !s.chatId) return; // silently skip if not configured
-  try {
-    await fetch(`https://api.telegram.org/bot${s.token}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: s.chatId, text, parse_mode: 'HTML' }),
-    });
-  } catch(e) {
-    console.warn('Telegram notification failed:', e.message);
-  }
 }
 
 async function testTelegramNotification() {
@@ -3506,46 +3537,6 @@ function saveDeptSchedules() {
   el.style.color = 'var(--gl)';
   el.textContent = '✓ Schedules saved';
   setTimeout(() => el.textContent = '', 3000);
-}
-
-function getPunctualityStatus(entry) {
-  const schedules = getDeptSchedules();
-  const dept = entry.dept || '';
-  // Try exact department match first, then case-insensitive
-  const schedule = schedules[dept]
-    || Object.entries(schedules).find(([k]) => k.toLowerCase() === dept.toLowerCase())?.[1];
-  if (!schedule) return null; // no schedule set for this department
-
-  const checkTime = entry.clientTime ? new Date(entry.clientTime) : new Date();
-  const [checkH, checkM] = [checkTime.getHours(), checkTime.getMinutes()];
-  const checkMinutes = checkH * 60 + checkM;
-
-  if (entry.type === 'in') {
-    const [startH, startM] = schedule.startTime.split(':').map(Number);
-    const startMinutes = startH * 60 + startM;
-    if (checkMinutes <= startMinutes) return { status: 'ontime', label: '✅ On Time' };
-    const lateBy = checkMinutes - startMinutes;
-    return { status: 'late', label: `⚠️ Late by ${lateBy} min (expected ${schedule.startTime})` };
-  } else {
-    const [endH, endM] = schedule.endTime.split(':').map(Number);
-    const endMinutes = endH * 60 + endM;
-    if (checkMinutes >= endMinutes) return { status: 'ontime', label: '✅ On Time' };
-    const earlyBy = endMinutes - checkMinutes;
-    return { status: 'early', label: `🚪 Left Early by ${earlyBy} min (expected ${schedule.endTime})` };
-  }
-}
-
-function buildCheckinMessage(entry) {
-  const isIn = entry.type === 'in';
-  const icon  = isIn ? '✅' : '🚪';
-  const label = isIn ? 'Check-In' : 'Check-Out';
-  const time  = entry.clientTime
-    ? new Date(entry.clientTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-    : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  const locLine  = entry.location ? '\n📍 Location captured' : '';
-  const punct    = getPunctualityStatus(entry);
-  const punctLine = punct ? `\n${punct.label}` : '';
-  return `${icon} <b>${label}</b>\n👤 ${entry.name} (${entry.employeeId})\n🏢 ${entry.dept || '—'}\n🕐 ${time}${locLine}${punctLine}`;
 }
 
 window.doAdminLogin = doAdminLogin; window.adminLogout = adminLogout; window.changeAdminPassword = changeAdminPassword;
