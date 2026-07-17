@@ -151,6 +151,10 @@ input,select{font-family:inherit;-webkit-appearance:none}
 .ep-item-del{background:none;border:none;color:var(--rl);font-size:16px;cursor:pointer;padding:0 4px}
 .sal-extra-btn{font-size:11px;font-weight:600;padding:3px 9px;border-radius:99px;background:var(--pd);color:var(--pl);border:none;cursor:pointer;white-space:nowrap}
 .sal-extra-btn:hover{background:var(--purple);color:#fff}
+.schedule-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 12px}
+.schedule-row input[type=text]{flex:1.5;min-width:100px;padding:7px 10px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:13px;outline:none}
+.schedule-row input[type=time]{flex:1;min-width:90px;padding:7px 10px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:13px;outline:none}
+.schedule-row .schedule-label{font-size:12px;color:var(--muted);white-space:nowrap}
 
 @media(max-width:700px){.grid2,.grid4{grid-template-columns:1fr}.page{padding:14px 12px}}
 
@@ -548,6 +552,17 @@ input,select{font-family:inherit;-webkit-appearance:none}
         🕐 09:02:35 AM<br>
         📍 Location captured
       </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🕐 Department Work Schedule</div>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 14px">Set expected check-in and check-out times per department. Used to flag late arrivals and early departures in Telegram notifications.</p>
+      <div id="dept-schedule-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px"></div>
+      <button class="btn btn-ghost btn-sm" onclick="addDeptScheduleRow()">➕ Add Department</button>
+      <div style="margin-top:12px">
+        <button class="btn btn-purple btn-sm" onclick="saveDeptSchedules()">💾 Save Schedules</button>
+      </div>
+      <div id="schedule-status" style="margin-top:10px;font-size:12px;min-height:16px"></div>
     </div>
 
     <div class="card">
@@ -2638,7 +2653,7 @@ function showTab(id, el) {
   if (id === 'logs')  { initLogFilters(); loadLogs(); }
   if (id === 'map')   { initMapFilters(); loadMap(); }
   if (id === 'salary') { initSalaryFilters(); }
-  if (id === 'settings') { loadTelegramSettings(); }
+  if (id === 'settings') { loadTelegramSettings(); loadDeptScheduleUI(); }
 }
 
 function getPresentSet() {
@@ -3430,20 +3445,110 @@ async function testTelegramNotification() {
   }
 }
 
+// ═══════════════════════════════════════════════════════════
+// DEPARTMENT WORK SCHEDULES
+// Stored as { [dept]: { startTime: "HH:MM", endTime: "HH:MM" } }
+// ═══════════════════════════════════════════════════════════
+const SCHEDULE_KEY = 'fa_dept_schedules';
+
+function getDeptSchedules() {
+  try { return JSON.parse(localStorage.getItem(SCHEDULE_KEY) || '{}'); } catch { return {}; }
+}
+
+function loadDeptScheduleUI() {
+  const schedules = getDeptSchedules();
+  const container = document.getElementById('dept-schedule-list');
+  if (!container) return;
+  container.innerHTML = '';
+  const entries = Object.entries(schedules);
+  if (!entries.length) {
+    // Pre-populate from existing departments in staff list
+    const depts = [...new Set(staff.map(s => s.dept).filter(Boolean))];
+    if (depts.length) {
+      depts.forEach(dept => addDeptScheduleRow(dept, '08:00', '17:00'));
+      return;
+    }
+    addDeptScheduleRow('', '08:00', '17:00');
+    return;
+  }
+  entries.forEach(([dept, s]) => addDeptScheduleRow(dept, s.startTime, s.endTime));
+}
+
+function addDeptScheduleRow(dept='', startTime='08:00', endTime='17:00') {
+  const container = document.getElementById('dept-schedule-list');
+  const row = document.createElement('div');
+  row.className = 'schedule-row';
+  row.innerHTML = `
+    <input type="text" placeholder="Department name" value="${dept}" class="dept-name">
+    <span class="schedule-label">In by</span>
+    <input type="time" value="${startTime}" class="dept-start">
+    <span class="schedule-label">Out by</span>
+    <input type="time" value="${endTime}" class="dept-end">
+    <button class="btn btn-ghost btn-sm" onclick="this.closest('.schedule-row').remove()" title="Remove">🗑</button>
+  `;
+  container.appendChild(row);
+}
+
+function saveDeptSchedules() {
+  const rows = document.querySelectorAll('.schedule-row');
+  const schedules = {};
+  rows.forEach(row => {
+    const dept      = row.querySelector('.dept-name')?.value.trim();
+    const startTime = row.querySelector('.dept-start')?.value;
+    const endTime   = row.querySelector('.dept-end')?.value;
+    if (dept && startTime && endTime) schedules[dept] = { startTime, endTime };
+  });
+  localStorage.setItem(SCHEDULE_KEY, JSON.stringify(schedules));
+  const el = document.getElementById('schedule-status');
+  el.style.color = 'var(--gl)';
+  el.textContent = '✓ Schedules saved';
+  setTimeout(() => el.textContent = '', 3000);
+}
+
+function getPunctualityStatus(entry) {
+  const schedules = getDeptSchedules();
+  const dept = entry.dept || '';
+  // Try exact department match first, then case-insensitive
+  const schedule = schedules[dept]
+    || Object.entries(schedules).find(([k]) => k.toLowerCase() === dept.toLowerCase())?.[1];
+  if (!schedule) return null; // no schedule set for this department
+
+  const checkTime = entry.clientTime ? new Date(entry.clientTime) : new Date();
+  const [checkH, checkM] = [checkTime.getHours(), checkTime.getMinutes()];
+  const checkMinutes = checkH * 60 + checkM;
+
+  if (entry.type === 'in') {
+    const [startH, startM] = schedule.startTime.split(':').map(Number);
+    const startMinutes = startH * 60 + startM;
+    if (checkMinutes <= startMinutes) return { status: 'ontime', label: '✅ On Time' };
+    const lateBy = checkMinutes - startMinutes;
+    return { status: 'late', label: `⚠️ Late by ${lateBy} min (expected ${schedule.startTime})` };
+  } else {
+    const [endH, endM] = schedule.endTime.split(':').map(Number);
+    const endMinutes = endH * 60 + endM;
+    if (checkMinutes >= endMinutes) return { status: 'ontime', label: '✅ On Time' };
+    const earlyBy = endMinutes - checkMinutes;
+    return { status: 'early', label: `🚪 Left Early by ${earlyBy} min (expected ${schedule.endTime})` };
+  }
+}
+
 function buildCheckinMessage(entry) {
   const isIn = entry.type === 'in';
-  const icon = isIn ? '✅' : '🚪';
+  const icon  = isIn ? '✅' : '🚪';
   const label = isIn ? 'Check-In' : 'Check-Out';
-  const time = entry.clientTime
+  const time  = entry.clientTime
     ? new Date(entry.clientTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
     : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  const locLine = entry.location ? '\n📍 Location captured' : '';
-  return `${icon} <b>${label}</b>\n👤 ${entry.name} (${entry.employeeId})\n🏢 ${entry.dept || '—'}\n🕐 ${time}${locLine}`;
+  const locLine  = entry.location ? '\n📍 Location captured' : '';
+  const punct    = getPunctualityStatus(entry);
+  const punctLine = punct ? `\n${punct.label}` : '';
+  return `${icon} <b>${label}</b>\n👤 ${entry.name} (${entry.employeeId})\n🏢 ${entry.dept || '—'}\n🕐 ${time}${locLine}${punctLine}`;
 }
 
 window.doAdminLogin = doAdminLogin; window.adminLogout = adminLogout; window.changeAdminPassword = changeAdminPassword;
 window.saveTelegramSettings = saveTelegramSettings; window.testTelegramNotification = testTelegramNotification;
 window.loadTelegramSettings = loadTelegramSettings;
+window.addDeptScheduleRow = addDeptScheduleRow; window.saveDeptSchedules = saveDeptSchedules;
 window.addStaff = addStaff; window.removeStaff = removeStaff; window.renderStaffTable = renderStaffTable;
 window.loadLogs = loadLogs; window.exportCSV = exportCSV; window.clearTodayLogs = clearTodayLogs;
 window.clearLogDateFilter = clearLogDateFilter;
