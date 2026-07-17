@@ -356,7 +356,7 @@ input,select{font-family:inherit;-webkit-appearance:none}
           <button class="btn btn-ghost" style="flex:1" id="btn-open-checkin">🔗 Open Check-in Page</button>
         </div>
         <button class="btn btn-ghost" style="width:100%;margin-top:8px" onclick="downloadQR()">⬇️ Download QR as Image</button>
-        <div style="margin-top:12px;font-size:12px;color:var(--muted);text-align:center">The QR points to this same page with <code style="font-size:11px">?checkin</code> added to the URL</div>
+        <div style="margin-top:12px;font-size:12px;color:var(--muted);text-align:center">QR points to <code style="font-size:11px">?checkin</code> — employees scan to check in. Admin dashboard is at <code style="font-size:11px">?admin</code></div>
       </div>
       <div class="card">
         <div class="card-title">ℹ️ How it works</div>
@@ -2349,7 +2349,17 @@ var qrcode = function() {
 // ═══════════════════════════════════════════════════════════
 // ROUTING — decide which view to show based on URL
 // ═══════════════════════════════════════════════════════════
-const IS_CHECKIN = new URLSearchParams(location.search).has('checkin');
+const params = new URLSearchParams(location.search);
+const IS_CHECKIN = params.has('checkin');
+const IS_ADMIN   = params.has('admin');
+
+// Routing:
+// ?checkin → employee check-in view
+// ?admin   → admin dashboard (password protected)
+// (root)   → redirect to ?checkin automatically
+if (!IS_CHECKIN && !IS_ADMIN) {
+  location.replace(location.href.split('?')[0] + '?checkin');
+}
 
 // ═══ ADMIN PASSWORD AUTH ═══
 // Password is stored as a SHA-256 hash in localStorage — never plaintext.
@@ -2412,7 +2422,7 @@ async function changeAdminPassword() {
 }
 
 function checkAdminSession() {
-  if (!IS_CHECKIN) {
+  if (IS_ADMIN) {
     if (sessionStorage.getItem('fa_admin_auth') === '1') {
       document.getElementById('admin-login').style.display = 'none';
       document.getElementById('admin-dashboard-wrap').classList.remove('hidden');
@@ -2427,7 +2437,7 @@ function checkAdminSession() {
 if (IS_CHECKIN) {
   document.getElementById('admin-view').classList.add('hidden');
   document.getElementById('employee-view').classList.remove('hidden');
-} else {
+} else if (IS_ADMIN) {
   document.getElementById('employee-view').classList.add('hidden');
   document.getElementById('admin-view').classList.remove('hidden');
 }
@@ -2554,7 +2564,7 @@ function connectFirebase(cfgObj) {
 // ═══════════════════════════════════════════════════════════
 // ═══════════════════════ ADMIN VIEW ═════════════════════════
 // ═══════════════════════════════════════════════════════════
-if (!IS_CHECKIN) {
+if (IS_ADMIN) {
 
 let cfg = getStoredConfig();
 let staff = [];
@@ -2613,7 +2623,7 @@ function initAdminAfterLogin() {
 }
 
 // If the admin already logged in earlier this browser session, skip the login screen
-if (!IS_CHECKIN) {
+if (IS_ADMIN) {
   const alreadyLoggedIn = checkAdminSession();
   if (alreadyLoggedIn) initAdminAfterLogin();
 }
