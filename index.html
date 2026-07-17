@@ -2883,11 +2883,9 @@ async function loadLogs() {
     const empName = empVal ? staff.find(s=>s.id===empVal)?.name : null;
     renderLogList(list, empName);
   } catch(e) {
-    const isIndexError = e.message && (e.message.includes('index') || e.message.includes('Index'));
+    console.error('loadLogs error:', e.code, e.message, e);
     document.getElementById('log-list').innerHTML = `<div style="color:var(--rl);font-size:13px;padding:20px;text-align:center">
-      ${isIndexError
-        ? 'Firestore composite index needed. Open Firebase Console → Firestore → Indexes and confirm the index on <code>logs</code> (<code>employeeId</code> Asc + <code>timestamp</code> Desc) is Enabled.'
-        : 'Error: ' + e.message}
+      Error (${e.code || 'unknown'}): ${e.message}
     </div>`;
   }
 }
