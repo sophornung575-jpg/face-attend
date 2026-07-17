@@ -2454,6 +2454,18 @@ const TG_KEY_SHARED = 'fa_telegram_settings';
 function getTelegramSettings() {
   try { return JSON.parse(localStorage.getItem(TG_KEY_SHARED) || '{}'); } catch { return {}; }
 }
+// Fetch Telegram settings from Firestore into localStorage cache so employee
+// devices (which don't share localStorage with the admin device) can send notifications.
+async function syncTelegramSettings() {
+  if (!db) return;
+  try {
+    const doc = await db.collection('settings').doc('telegram').get();
+    if (doc.exists) {
+      const data = doc.data();
+      localStorage.setItem(TG_KEY_SHARED, JSON.stringify(data));
+    }
+  } catch(e) { console.warn('Failed to sync Telegram settings:', e.message); }
+}
 async function sendTelegramMessage(text) {
   const s = getTelegramSettings();
   if (!s.enabled || !s.token || !s.chatId) return;
@@ -3433,15 +3445,23 @@ function loadTelegramSettings() {
   document.getElementById('tg-enabled').checked = !!s.enabled;
 }
 
-function saveTelegramSettings() {
-  const token  = document.getElementById('tg-token').value.trim();
-  const chatId = document.getElementById('tg-chatid').value.trim();
+async function saveTelegramSettings() {
+  const token   = document.getElementById('tg-token').value.trim();
+  const chatId  = document.getElementById('tg-chatid').value.trim();
   const enabled = document.getElementById('tg-enabled').checked;
-  localStorage.setItem(TG_KEY, JSON.stringify({ token, chatId, enabled }));
+  const data = { token, chatId, enabled };
+  // Save to localStorage (for this device) AND Firestore (so employee phones can read it)
+  localStorage.setItem(TG_KEY, JSON.stringify(data));
   const statusEl = document.getElementById('tg-status');
-  statusEl.style.color = 'var(--gl)';
-  statusEl.textContent = '✓ Settings saved';
-  setTimeout(() => statusEl.textContent = '', 3000);
+  try {
+    await db.collection('settings').doc('telegram').set(data);
+    statusEl.style.color = 'var(--gl)';
+    statusEl.textContent = '✓ Settings saved & synced to all devices';
+  } catch(e) {
+    statusEl.style.color = 'var(--amber)';
+    statusEl.textContent = '⚠ Saved locally only — Firestore sync failed: ' + e.message;
+  }
+  setTimeout(() => statusEl.textContent = '', 4000);
 }
 
 async function testTelegramNotification() {
@@ -3577,7 +3597,7 @@ function saveEmpConfig() {
 }
 function initEmpFirebase() {
   const ok = connectFirebase(empCfg);
-  if (ok) { goTo('select'); loadStaff(); }
+  if (ok) { goTo('select'); loadStaff(); syncTelegramSettings(); }
   else { document.getElementById('err-msg').textContent = 'Firebase connection error'; goTo('error'); }
 }
 
