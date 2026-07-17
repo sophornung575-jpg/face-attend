@@ -2470,7 +2470,18 @@ async function syncTelegramSettings() {
   } catch(e) { console.warn('[Telegram] sync failed:', e.message); }
 }
 async function sendTelegramMessage(text) {
-  const s = getTelegramSettings();
+  // Try localStorage first (fast), then fall back to fresh Firestore read
+  let s = getTelegramSettings();
+  if ((!s.enabled || !s.token || !s.chatId) && db) {
+    try {
+      const doc = await db.collection('settings').doc('telegram').get();
+      if (doc.exists) {
+        s = doc.data();
+        localStorage.setItem(TG_KEY_SHARED, JSON.stringify(s));
+        console.log('[Telegram] loaded from Firestore on demand');
+      }
+    } catch(e) { console.warn('[Telegram] Firestore fallback failed:', e.message); }
+  }
   console.log('[Telegram] settings:', JSON.stringify({ enabled: s.enabled, hasToken: !!s.token, hasChatId: !!s.chatId }));
   if (!s.enabled || !s.token || !s.chatId) {
     console.warn('[Telegram] skipped — not configured or disabled');
@@ -3793,7 +3804,7 @@ async function submitCheckin() {
       timestamp: firebase.firestore.FieldValue.serverTimestamp(), clientTime: new Date().toISOString()
     };
     await db.collection('logs').add(entry);
-    sendTelegramMessage(buildCheckinMessage(entry)); // fire-and-forget, never blocks check-in
+    await sendTelegramMessage(buildCheckinMessage(entry));
     showSuccess(entry);
   } catch(e) {
     document.getElementById('err-msg').textContent = 'Save failed: ' + e.message;
