@@ -2457,25 +2457,35 @@ function getTelegramSettings() {
 // Fetch Telegram settings from Firestore into localStorage cache so employee
 // devices (which don't share localStorage with the admin device) can send notifications.
 async function syncTelegramSettings() {
-  if (!db) return;
+  if (!db) { console.warn('[Telegram] syncTelegramSettings: db not ready'); return; }
   try {
     const doc = await db.collection('settings').doc('telegram').get();
     if (doc.exists) {
       const data = doc.data();
       localStorage.setItem(TG_KEY_SHARED, JSON.stringify(data));
+      console.log('[Telegram] synced from Firestore:', JSON.stringify({ enabled: data.enabled, hasToken: !!data.token, hasChatId: !!data.chatId }));
+    } else {
+      console.warn('[Telegram] no settings doc found in Firestore — save settings in admin first');
     }
-  } catch(e) { console.warn('Failed to sync Telegram settings:', e.message); }
+  } catch(e) { console.warn('[Telegram] sync failed:', e.message); }
 }
 async function sendTelegramMessage(text) {
   const s = getTelegramSettings();
-  if (!s.enabled || !s.token || !s.chatId) return;
+  console.log('[Telegram] settings:', JSON.stringify({ enabled: s.enabled, hasToken: !!s.token, hasChatId: !!s.chatId }));
+  if (!s.enabled || !s.token || !s.chatId) {
+    console.warn('[Telegram] skipped — not configured or disabled');
+    return;
+  }
   try {
-    await fetch(`https://api.telegram.org/bot${s.token}/sendMessage`, {
+    const res = await fetch(`https://api.telegram.org/bot${s.token}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ chat_id: s.chatId, text, parse_mode: 'HTML' }),
     });
-  } catch(e) { console.warn('Telegram notification failed:', e.message); }
+    const data = await res.json();
+    if (data.ok) console.log('[Telegram] sent ✅');
+    else console.error('[Telegram] failed:', data.description);
+  } catch(e) { console.error('[Telegram] network error:', e.message); }
 }
 function getPunctualityStatus(entry) {
   try { var schedules = JSON.parse(localStorage.getItem('fa_dept_schedules') || '{}'); } catch { var schedules = {}; }
