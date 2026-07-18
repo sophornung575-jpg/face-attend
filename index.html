@@ -3695,6 +3695,9 @@ async function startCam() {
     camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing, width:{ideal:1280}, height:{ideal:720} }, audio: false });
     const v = document.getElementById('cam-video');
     v.srcObject = camStream; await v.play();
+    // Front camera (user) is mirrored by browsers by default — un-mirror it so
+    // the live preview matches what gets saved (normal, non-mirrored orientation)
+    v.style.transform = facing === 'user' ? 'scaleX(-1)' : 'scaleX(1)';
   } catch(e) {
     document.getElementById('err-msg').textContent = 'Camera access denied. Please allow camera and try again.';
     goTo('error');
