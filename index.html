@@ -2495,6 +2495,16 @@ async function notifyCheckin(entry) {
     sendTelegramMessage(buildCheckinMessage(entry));
   }
 }
+async function syncSchedules() {
+  if (!db) return;
+  try {
+    const doc = await db.collection('settings').doc('schedules').get();
+    if (doc.exists) {
+      const data = doc.data();
+      localStorage.setItem('fa_dept_schedules', JSON.stringify(data.schedules || {}));
+    }
+  } catch(e) { console.warn('Schedule sync failed:', e.message); }
+}
 function getPunctualityStatus(entry) {
   try { var schedules = JSON.parse(localStorage.getItem('fa_dept_schedules') || '{}'); } catch { var schedules = {}; }
   const dept = entry.dept || '';
@@ -3564,7 +3574,7 @@ function addDeptScheduleRow(dept='', startTime='08:00', endTime='17:00') {
   container.appendChild(row);
 }
 
-function saveDeptSchedules() {
+async function saveDeptSchedules() {
   const rows = document.querySelectorAll('.schedule-row');
   const schedules = {};
   rows.forEach(row => {
@@ -3575,8 +3585,14 @@ function saveDeptSchedules() {
   });
   localStorage.setItem(SCHEDULE_KEY, JSON.stringify(schedules));
   const el = document.getElementById('schedule-status');
-  el.style.color = 'var(--gl)';
-  el.textContent = '✓ Schedules saved';
+  try {
+    await db.collection('settings').doc('schedules').set({ schedules });
+    el.style.color = 'var(--gl)';
+    el.textContent = '✓ Schedules saved & synced to all devices';
+  } catch(e) {
+    el.style.color = 'var(--amber)';
+    el.textContent = '✓ Saved locally — Firestore sync failed: ' + e.message;
+  }
   setTimeout(() => el.textContent = '', 3000);
 }
 
@@ -3618,7 +3634,7 @@ function saveEmpConfig() {
 }
 function initEmpFirebase() {
   const ok = connectFirebase(empCfg);
-  if (ok) { goTo('select'); loadStaff(); syncTelegramSettings(); }
+  if (ok) { goTo('select'); loadStaff(); syncTelegramSettings(); syncSchedules(); }
   else { document.getElementById('err-msg').textContent = 'Firebase connection error'; goTo('error'); }
 }
 
