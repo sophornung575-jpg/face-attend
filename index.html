@@ -2473,10 +2473,16 @@ async function sendTelegramMessage(text) {
   } catch(e) { console.error('[Telegram] error:', e.message); }
 }
 async function notifyCheckin(entry) {
+  // Ensure schedules are loaded — fetch from Firestore if localStorage is empty
+  const cached = localStorage.getItem('fa_dept_schedules');
+  if (!cached || cached === '{}') {
+    await syncSchedules();
+  }
+
   if (WORKER_URL) {
-    // Primary: call Cloudflare Worker — works from any device, token stays secret
     try {
       const punct = getPunctualityStatus(entry);
+      console.log('[Telegram] punctuality:', punct ? punct.label : 'none (no schedule for dept: ' + entry.dept + ')');
       const res = await fetch(WORKER_URL, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -2491,7 +2497,6 @@ async function notifyCheckin(entry) {
       else console.error('[Telegram] Worker error:', data);
     } catch(e) { console.error('[Telegram] Worker call failed:', e.message); }
   } else {
-    // Fallback: fire from admin browser via onSnapshot (admin tab must be open)
     sendTelegramMessage(buildCheckinMessage(entry));
   }
 }
