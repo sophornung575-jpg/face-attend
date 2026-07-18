@@ -3708,7 +3708,6 @@ function snap() {
   const c = document.getElementById('cam-canvas');
   c.width = v.videoWidth || 640; c.height = v.videoHeight || 480;
   const ctx = c.getContext('2d');
-  if (facing==='user') { ctx.translate(c.width,0); ctx.scale(-1,1); }
   ctx.drawImage(v, 0, 0, c.width, c.height);
   photoDataUrl = c.toDataURL('image/jpeg', 0.80);
   stopCam();
