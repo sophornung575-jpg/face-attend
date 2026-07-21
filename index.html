@@ -2521,12 +2521,12 @@ function getPunctualityStatus(entry) {
     const [h,m] = schedule.startTime.split(':').map(Number);
     const startMinutes = h * 60 + m;
     if (checkMinutes <= startMinutes) return { label: '✅ On Time' };
-    return { label: `⚠️ Late/មកយឺត by ${checkMinutes - startMinutes} min (expected ${schedule.startTime})` };
+    return { label: `⚠️ Late by ${checkMinutes - startMinutes} min (expected ${schedule.startTime})` };
   } else {
     const [h,m] = schedule.endTime.split(':').map(Number);
     const endMinutes = h * 60 + m;
     if (checkMinutes >= endMinutes) return { label: '✅ On Time' };
-    return { label: `🚪 Left Early/ទៅមុន by ${endMinutes - checkMinutes} min (expected ${schedule.endTime})` };
+    return { label: `🚪 Left Early by ${endMinutes - checkMinutes} min (expected ${schedule.endTime})` };
   }
 }
 function buildCheckinMessage(entry) {
@@ -2534,8 +2534,8 @@ function buildCheckinMessage(entry) {
   const icon  = isIn ? '✅' : '🚪';
   const label = isIn ? 'Check-In' : 'Check-Out';
   const time  = entry.clientTime
-    ? new Date(entry.clientTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-    : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    ? new Date(entry.clientTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Phnom_Penh' })
+    : new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Phnom_Penh' });
   const locLine   = entry.location ? '\n📍 Location captured' : '';
   const punct     = getPunctualityStatus(entry);
   const punctLine = punct ? `\n${punct.label}` : '';
