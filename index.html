@@ -2521,12 +2521,12 @@ function getPunctualityStatus(entry) {
     const [h,m] = schedule.startTime.split(':').map(Number);
     const startMinutes = h * 60 + m;
     if (checkMinutes <= startMinutes) return { label: '✅ On Time' };
-    return { label: `⚠️ Late by ${checkMinutes - startMinutes} min (expected ${schedule.startTime})` };
+    return { label: `⚠️ Late by/មកយឺតរយះពេល ${checkMinutes - startMinutes} min (expected ${schedule.startTime})` };
   } else {
     const [h,m] = schedule.endTime.split(':').map(Number);
     const endMinutes = h * 60 + m;
     if (checkMinutes >= endMinutes) return { label: '✅ On Time' };
-    return { label: `🚪 Left Early by ${endMinutes - checkMinutes} min (expected ${schedule.endTime})` };
+    return { label: `🚪 Left Early by/ចេញមុនរយះពេល ${endMinutes - checkMinutes} min (expected ${schedule.endTime})` };
   }
 }
 function buildCheckinMessage(entry) {
