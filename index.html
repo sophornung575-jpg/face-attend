@@ -566,6 +566,17 @@ input,select{font-family:inherit;-webkit-appearance:none}
     </div>
 
     <div class="card">
+      <div class="card-title">🧑 Personal Schedule Override</div>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 14px">Set a custom check-in/check-out time for a specific employee. This overrides their department's default schedule for punctuality checks.</p>
+      <div id="emp-schedule-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px"></div>
+      <button class="btn btn-ghost btn-sm" onclick="addEmpScheduleRow()">➕ Add Employee Override</button>
+      <div style="margin-top:12px">
+        <button class="btn btn-purple btn-sm" onclick="saveEmpSchedules()">💾 Save Overrides</button>
+      </div>
+      <div id="emp-schedule-status" style="margin-top:10px;font-size:12px;min-height:16px"></div>
+    </div>
+
+    <div class="card">
       <div class="card-title">🔐 Admin Password</div>
       <p style="font-size:13px;color:var(--muted);margin:0 0 14px">Change the password used to access this dashboard.</p>
       <button class="btn btn-ghost btn-sm" onclick="changeAdminPassword()">🔑 Change Password</button>
@@ -2507,13 +2518,18 @@ async function syncSchedules() {
     if (doc.exists) {
       const data = doc.data();
       localStorage.setItem('fa_dept_schedules', JSON.stringify(data.schedules || {}));
+      localStorage.setItem('fa_emp_schedules', JSON.stringify(data.employeeOverrides || {}));
     }
   } catch(e) { console.warn('Schedule sync failed:', e.message); }
 }
 function getPunctualityStatus(entry) {
   try { var schedules = JSON.parse(localStorage.getItem('fa_dept_schedules') || '{}'); } catch { var schedules = {}; }
+  try { var overrides = JSON.parse(localStorage.getItem('fa_emp_schedules') || '{}'); } catch { var overrides = {}; }
   const dept = entry.dept || '';
-  const schedule = schedules[dept] || Object.entries(schedules).find(([k]) => k.toLowerCase() === dept.toLowerCase())?.[1];
+  // Personal override takes priority over the department default
+  const schedule = overrides[entry.employeeId]
+    || schedules[dept]
+    || Object.entries(schedules).find(([k]) => k.toLowerCase() === dept.toLowerCase())?.[1];
   if (!schedule) return null;
   const checkTime = entry.clientTime ? new Date(entry.clientTime) : new Date();
   const checkMinutes = checkTime.getHours() * 60 + checkTime.getMinutes();
@@ -2521,12 +2537,12 @@ function getPunctualityStatus(entry) {
     const [h,m] = schedule.startTime.split(':').map(Number);
     const startMinutes = h * 60 + m;
     if (checkMinutes <= startMinutes) return { label: '✅ On Time' };
-    return { label: `⚠️ Late by/មកយឺតរយះពេល ${checkMinutes - startMinutes} min (expected ${schedule.startTime})` };
+    return { label: `⚠️ Late by ${checkMinutes - startMinutes} min (expected ${schedule.startTime})` };
   } else {
     const [h,m] = schedule.endTime.split(':').map(Number);
     const endMinutes = h * 60 + m;
     if (checkMinutes >= endMinutes) return { label: '✅ On Time' };
-    return { label: `🚪 Left Early by/ចេញមុនរយះពេល ${endMinutes - checkMinutes} min (expected ${schedule.endTime})` };
+    return { label: `🚪 Left Early by ${endMinutes - checkMinutes} min (expected ${schedule.endTime})` };
   }
 }
 function buildCheckinMessage(entry) {
@@ -2767,7 +2783,7 @@ function showTab(id, el) {
   if (id === 'logs')  { initLogFilters(); loadLogs(); }
   if (id === 'map')   { initMapFilters(); loadMap(); }
   if (id === 'salary') { initSalaryFilters(); }
-  if (id === 'settings') { loadTelegramSettings(); loadDeptScheduleUI(); }
+  if (id === 'settings') { loadTelegramSettings(); loadDeptScheduleUI(); loadEmpScheduleUI(); }
 }
 
 function getPresentSet() {
@@ -3580,7 +3596,7 @@ function addDeptScheduleRow(dept='', startTime='08:00', endTime='17:00') {
 }
 
 async function saveDeptSchedules() {
-  const rows = document.querySelectorAll('.schedule-row');
+  const rows = document.querySelectorAll('#dept-schedule-list .schedule-row');
   const schedules = {};
   rows.forEach(row => {
     const dept      = row.querySelector('.dept-name')?.value.trim();
@@ -3591,9 +3607,72 @@ async function saveDeptSchedules() {
   localStorage.setItem(SCHEDULE_KEY, JSON.stringify(schedules));
   const el = document.getElementById('schedule-status');
   try {
-    await db.collection('settings').doc('schedules').set({ schedules });
+    await db.collection('settings').doc('schedules').set({ schedules }, { merge: true });
     el.style.color = 'var(--gl)';
     el.textContent = '✓ Schedules saved & synced to all devices';
+  } catch(e) {
+    el.style.color = 'var(--amber)';
+    el.textContent = '✓ Saved locally — Firestore sync failed: ' + e.message;
+  }
+  setTimeout(() => el.textContent = '', 3000);
+}
+
+// ═══════════════════════════════════════════════════════════
+// PERSONAL SCHEDULE OVERRIDES (per-employee)
+// Stored as { [employeeId]: { startTime: "HH:MM", endTime: "HH:MM" } }
+// Takes priority over the employee's department schedule.
+// ═══════════════════════════════════════════════════════════
+const EMP_SCHEDULE_KEY = 'fa_emp_schedules';
+
+function getEmpSchedules() {
+  try { return JSON.parse(localStorage.getItem(EMP_SCHEDULE_KEY) || '{}'); } catch { return {}; }
+}
+
+function loadEmpScheduleUI() {
+  const overrides = getEmpSchedules();
+  const container = document.getElementById('emp-schedule-list');
+  if (!container) return;
+  container.innerHTML = '';
+  Object.entries(overrides).forEach(([empId, s]) => addEmpScheduleRow(empId, s.startTime, s.endTime));
+}
+
+function addEmpScheduleRow(employeeId='', startTime='08:00', endTime='17:00') {
+  const container = document.getElementById('emp-schedule-list');
+  if (!container) return;
+  const row = document.createElement('div');
+  row.className = 'schedule-row';
+  const options = staff.map(s =>
+    `<option value="${s.id}" ${s.id===employeeId?'selected':''}>${s.name} (${s.id})</option>`
+  ).join('');
+  row.innerHTML = `
+    <select class="emp-select" style="flex:1.5;min-width:150px;padding:7px 10px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:13px;outline:none">
+      <option value="">Select employee…</option>
+      ${options}
+    </select>
+    <span class="schedule-label">In by</span>
+    <input type="time" value="${startTime}" class="emp-start">
+    <span class="schedule-label">Out by</span>
+    <input type="time" value="${endTime}" class="emp-end">
+    <button class="btn btn-ghost btn-sm" onclick="this.closest('.schedule-row').remove()" title="Remove">🗑</button>
+  `;
+  container.appendChild(row);
+}
+
+async function saveEmpSchedules() {
+  const rows = document.querySelectorAll('#emp-schedule-list .schedule-row');
+  const overrides = {};
+  rows.forEach(row => {
+    const empId     = row.querySelector('.emp-select')?.value;
+    const startTime = row.querySelector('.emp-start')?.value;
+    const endTime   = row.querySelector('.emp-end')?.value;
+    if (empId && startTime && endTime) overrides[empId] = { startTime, endTime };
+  });
+  localStorage.setItem(EMP_SCHEDULE_KEY, JSON.stringify(overrides));
+  const el = document.getElementById('emp-schedule-status');
+  try {
+    await db.collection('settings').doc('schedules').set({ employeeOverrides: overrides }, { merge: true });
+    el.style.color = 'var(--gl)';
+    el.textContent = '✓ Overrides saved & synced to all devices';
   } catch(e) {
     el.style.color = 'var(--amber)';
     el.textContent = '✓ Saved locally — Firestore sync failed: ' + e.message;
@@ -3605,6 +3684,7 @@ window.doAdminLogin = doAdminLogin; window.adminLogout = adminLogout; window.cha
 window.saveTelegramSettings = saveTelegramSettings; window.testTelegramNotification = testTelegramNotification;
 window.loadTelegramSettings = loadTelegramSettings;
 window.addDeptScheduleRow = addDeptScheduleRow; window.saveDeptSchedules = saveDeptSchedules;
+window.addEmpScheduleRow = addEmpScheduleRow; window.saveEmpSchedules = saveEmpSchedules;
 window.addStaff = addStaff; window.removeStaff = removeStaff; window.renderStaffTable = renderStaffTable;
 window.loadLogs = loadLogs; window.exportCSV = exportCSV; window.clearTodayLogs = clearTodayLogs;
 window.clearLogDateFilter = clearLogDateFilter;
