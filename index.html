@@ -64,6 +64,16 @@ input,select{font-family:inherit;-webkit-appearance:none}
 .badge.absent{background:var(--pd);color:var(--pl)}
 .badge.in{background:var(--gd);color:var(--gl)}
 .badge.out{background:var(--rd);color:var(--rl)}
+.badge.late{background:#fef3c7;color:#92400e}
+.badge.early{background:#e0f2fe;color:#075985}
+.badge.missing{background:var(--rd);color:var(--rl)}
+.badge.ontime{background:var(--surface);color:var(--muted)}
+.log-item.absent-row{border-left:3px solid var(--rl)}
+.att-count{font-size:12px;white-space:nowrap}
+.att-count .sub{color:var(--muted);font-size:11px}
+.workday-picks{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}
+.workday-picks label{display:flex;align-items:center;gap:5px;font-size:13px;padding:6px 10px;border:1px solid var(--border2);border-radius:6px;cursor:pointer;background:var(--bg)}
+.workday-picks input{accent-color:var(--purple)}
 
 .log-scroll{display:flex;flex-direction:column;gap:6px;overflow-y:auto}
 .log-scroll::-webkit-scrollbar{width:3px}
@@ -430,6 +440,8 @@ input,select{font-family:inherit;-webkit-appearance:none}
           <select id="log-employee"><option value="">All Employees</option></select></div>
         <div class="field" style="margin:0;min-width:110px;flex:1"><label>Type</label>
           <select id="log-type"><option value="">All</option><option value="in">Check-In</option><option value="out">Check-Out</option></select></div>
+        <div class="field" style="margin:0;min-width:120px;flex:1"><label>Status</label>
+          <select id="log-status"><option value="">All</option><option value="late">Late</option><option value="early">Left early</option><option value="absent">Absent</option><option value="on_time">On time</option></select></div>
         <button class="btn btn-ghost btn-sm" style="height:36px" onclick="loadLogs()">🔍 Filter</button>
         <button class="btn btn-ghost btn-sm" style="height:36px" onclick="clearLogDateFilter()">✕ Clear</button>
         <button class="btn btn-ghost btn-sm" style="height:36px" onclick="exportCSV()">📄 Export CSV</button>
@@ -482,9 +494,18 @@ input,select{font-family:inherit;-webkit-appearance:none}
         <button class="btn btn-ghost btn-sm" onclick="openExtraPayPicker()">💵 Add Extra Pay for Employee...</button>
       </div>
       <div style="overflow-x:auto">
-        <table class="tbl"><thead><tr><th>Employee</th><th>Department</th><th>Days</th><th>Hours</th><th>Rate</th><th>Base Pay</th><th>Extra Pay</th><th>Total</th><th></th></tr></thead>
-        <tbody id="salary-tbody"><tr><td colspan="9" style="text-align:center;color:var(--muted);padding:20px">Select a month and click Calculate</td></tr></tbody></table>
+        <table class="tbl"><thead><tr><th>Employee</th><th>Department</th><th>Days</th><th>Late</th><th>Left early</th><th>Absent</th><th>Hours</th><th>Rate</th><th>Base Pay</th><th>Extra Pay</th><th>Total</th><th></th></tr></thead>
+        <tbody id="salary-tbody"><tr><td colspan="12" style="text-align:center;color:var(--muted);padding:20px">Select a month and click Calculate</td></tr></tbody></table>
       </div>
+    </div>
+
+    <div class="card" id="salary-att-card" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+        <div class="card-title" style="margin-bottom:0">🕐 Late, left early & absent</div>
+        <select id="att-emp-filter" onchange="renderAttendanceIssues()" style="padding:7px 10px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:13px"><option value="">All employees</option></select>
+      </div>
+      <div class="page-sub" style="margin-bottom:10px">Day by day, for checking before you pay. Only the first check-in and last check-out of each day are judged.</div>
+      <div class="log-scroll" id="salary-att-list" style="max-height:320px"></div>
     </div>
 
     <div class="card" id="salary-flags-card" style="display:none">
@@ -556,7 +577,10 @@ input,select{font-family:inherit;-webkit-appearance:none}
 
     <div class="card">
       <div class="card-title">🕐 Department Work Schedule</div>
-      <p style="font-size:13px;color:var(--muted);margin:0 0 14px">Set expected check-in and check-out times per department. Used to flag late arrivals and early departures in Telegram notifications.</p>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 14px">Set expected check-in and check-out times per department. Used to mark late arrivals and early departures in Telegram, Logs and Salary.</p>
+      <label style="display:block;font-size:12px;font-weight:600;color:var(--subtle);margin-bottom:6px">Working days</label>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 8px">A working day with no check-in counts as absent. Unticked days are days off.</p>
+      <div class="workday-picks" id="workday-picks"></div>
       <div id="dept-schedule-list" style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px"></div>
       <button class="btn btn-ghost btn-sm" onclick="addDeptScheduleRow()">➕ Add Department</button>
       <div style="margin-top:12px">
@@ -2519,32 +2543,135 @@ async function syncSchedules() {
       const data = doc.data();
       localStorage.setItem('fa_dept_schedules', JSON.stringify(data.schedules || {}));
       localStorage.setItem('fa_emp_schedules', JSON.stringify(data.employeeOverrides || {}));
+      if (Array.isArray(data.workDays)) localStorage.setItem('fa_work_days', JSON.stringify(data.workDays));
     }
   } catch(e) { console.warn('Schedule sync failed:', e.message); }
 }
-function getPunctualityStatus(entry) {
-  try { var schedules = JSON.parse(localStorage.getItem('fa_dept_schedules') || '{}'); } catch { var schedules = {}; }
-  try { var overrides = JSON.parse(localStorage.getItem('fa_emp_schedules') || '{}'); } catch { var overrides = {}; }
-  const dept = entry.dept || '';
-  // Personal override takes priority over the department default
-  const schedule = overrides[entry.employeeId]
-    || schedules[dept]
-    || Object.entries(schedules).find(([k]) => k.toLowerCase() === dept.toLowerCase())?.[1];
-  if (!schedule) return null;
-  const checkTime = entry.clientTime ? new Date(entry.clientTime) : new Date();
-  const checkMinutes = checkTime.getHours() * 60 + checkTime.getMinutes();
-  if (entry.type === 'in') {
-    const [h,m] = schedule.startTime.split(':').map(Number);
-    const startMinutes = h * 60 + m;
-    if (checkMinutes <= startMinutes) return { label: '✅ On Time' };
-    return { label: `⚠️ Late by ${checkMinutes - startMinutes} min (expected ${schedule.startTime})` };
-  } else {
-    const [h,m] = schedule.endTime.split(':').map(Number);
-    const endMinutes = h * 60 + m;
-    if (checkMinutes >= endMinutes) return { label: '✅ On Time' };
-    return { label: `🚪 Left Early by ${endMinutes - checkMinutes} min (expected ${schedule.endTime})` };
-  }
+// ═══════════════════════════════════════════════════════════
+// ATTENDANCE STATUS — late, left early, absent
+// All times are judged in Cambodia time (Asia/Phnom_Penh) no matter which
+// device or browser timezone does the calculation.
+// ═══════════════════════════════════════════════════════════
+const TZ = 'Asia/Phnom_Penh';
+const DEFAULT_WORK_DAYS = [1,2,3,4,5,6]; // Mon–Sat (0 = Sunday)
+const WEEKDAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const _ppFmt = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hourCycle:'h23', weekday:'short' });
+function ppParts(d) {
+  const o = {};
+  _ppFmt.formatToParts(new Date(d)).forEach(p => o[p.type] = p.value);
+  return { dateKey: `${o.year}-${o.month}-${o.day}`, minutes: (+o.hour) * 60 + (+o.minute), weekday: WEEKDAY_NAMES.indexOf(o.weekday) };
 }
+function hhmmToMin(t) { const [h,m] = String(t||'').split(':').map(Number); return (isNaN(h)||isNaN(m)) ? null : h*60+m; }
+function fmtDateKey(k) { const [y,m,d] = k.split('-').map(Number); return new Date(Date.UTC(y,m-1,d,12)).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',timeZone:'UTC'}); }
+function fmtMins(n) { if (n < 60) return `${n} min`; const h = Math.floor(n/60), m = n%60; return m ? `${h}h ${m}m` : `${h}h`; }
+
+function readScheduleCache() {
+  let schedules = {}, overrides = {}, workDays = DEFAULT_WORK_DAYS;
+  try { schedules = JSON.parse(localStorage.getItem('fa_dept_schedules') || '{}'); } catch {}
+  try { overrides = JSON.parse(localStorage.getItem('fa_emp_schedules') || '{}'); } catch {}
+  try { const w = JSON.parse(localStorage.getItem('fa_work_days') || 'null'); if (Array.isArray(w)) workDays = w; } catch {}
+  return { schedules, overrides, workDays };
+}
+// Personal override first, then department (case-insensitive)
+function resolveSchedule(employeeId, dept, cfg) {
+  cfg = cfg || readScheduleCache();
+  dept = dept || '';
+  return cfg.overrides[employeeId]
+    || cfg.schedules[dept]
+    || Object.entries(cfg.schedules).find(([k]) => k.toLowerCase() === dept.toLowerCase())?.[1]
+    || null;
+}
+function entryDate(e) {
+  if (e.time) return new Date(e.time);
+  if (e.timestamp?.toDate) return e.timestamp.toDate();
+  return new Date(e.clientTime || Date.now());
+}
+// Status of one check-in or check-out event against a schedule.
+// Returns { status: 'on_time'|'late'|'early', minutes, expected } or null if no schedule.
+function eventPunctuality(type, when, schedule) {
+  if (!schedule) return null;
+  const mins = ppParts(when).minutes;
+  if (type === 'in') {
+    const start = hhmmToMin(schedule.startTime); if (start === null) return null;
+    return mins <= start ? { status:'on_time', minutes:0, expected:schedule.startTime }
+                         : { status:'late', minutes:mins-start, expected:schedule.startTime };
+  }
+  const end = hhmmToMin(schedule.endTime); if (end === null) return null;
+  return mins >= end ? { status:'on_time', minutes:0, expected:schedule.endTime }
+                     : { status:'early', minutes:end-mins, expected:schedule.endTime };
+}
+function punctualityLabel(p) {
+  if (!p) return '';
+  if (p.status === 'late')  return `⚠️ Late by ${p.minutes} min (expected ${p.expected})`;
+  if (p.status === 'early') return `🚪 Left Early by ${p.minutes} min (expected ${p.expected})`;
+  return '✅ On Time';
+}
+// Kept for Telegram: judges a single event on its own
+function getPunctualityStatus(entry) {
+  const sched = entry.schedule || resolveSchedule(entry.employeeId, entry.dept);
+  const p = eventPunctuality(entry.type, entryDate(entry), sched);
+  return p ? { label: punctualityLabel(p), ...p } : null;
+}
+
+// Day-level analysis over a set of logs.
+// Only the FIRST check-in of a day can be late and only the LAST check-out can be
+// early, so a lunch-break out/in never counts against anyone.
+// Uses the schedule saved on the log at check-in time when present, otherwise the
+// current schedule (this is what fills in status for older logs).
+// Returns { statusByLog: Map(log -> punctuality), days: { [empId]: { [dateKey]: {...} } } }
+function analyzeAttendance(logs, cfg) {
+  cfg = cfg || readScheduleCache();
+  const groups = {};
+  logs.forEach(l => {
+    if (!l.employeeId) return;
+    const k = l.employeeId + '|' + ppParts(entryDate(l)).dateKey;
+    (groups[k] = groups[k] || []).push(l);
+  });
+  const statusByLog = new Map();
+  const days = {};
+  Object.entries(groups).forEach(([k, list]) => {
+    const [empId, dateKey] = k.split('|');
+    list.sort((a,b) => entryDate(a) - entryDate(b));
+    const firstIn = list.find(l => l.type === 'in');
+    const lastOut = [...list].reverse().find(l => l.type === 'out');
+    const day = { dateKey, checkedIn: !!firstIn, late: null, early: null };
+    if (firstIn) {
+      const p = eventPunctuality('in', entryDate(firstIn), firstIn.schedule || resolveSchedule(empId, firstIn.dept, cfg));
+      if (p) { statusByLog.set(firstIn, p); if (p.status === 'late') day.late = p; }
+    }
+    if (lastOut && (!firstIn || entryDate(lastOut) > entryDate(firstIn))) {
+      const p = eventPunctuality('out', entryDate(lastOut), lastOut.schedule || resolveSchedule(empId, lastOut.dept, cfg));
+      if (p) { statusByLog.set(lastOut, p); if (p.status === 'early') day.early = p; }
+    }
+    (days[empId] = days[empId] || {})[dateKey] = day;
+  });
+  return { statusByLog, days };
+}
+
+// Working days between two date keys (inclusive) with no check-in = absent.
+// Never counts days in the future or before the employee was added.
+function findAbsences(staffList, days, fromKey, toKey, cfg) {
+  cfg = cfg || readScheduleCache();
+  const todayKey = ppParts(new Date()).dateKey;
+  if (toKey > todayKey) toKey = todayKey;
+  const out = [];
+  if (fromKey > toKey) return out;
+  const [fy,fm,fd] = fromKey.split('-').map(Number);
+  const [ty,tm,td] = toKey.split('-').map(Number);
+  const allKeys = [];
+  for (let d = new Date(Date.UTC(fy,fm-1,fd)); d <= new Date(Date.UTC(ty,tm-1,td)); d.setUTCDate(d.getUTCDate()+1)) {
+    if (cfg.workDays.includes(d.getUTCDay())) allKeys.push(d.toISOString().slice(0,10));
+  }
+  staffList.forEach(s => {
+    const created = s.createdAt?.toDate ? ppParts(s.createdAt.toDate()).dateKey : null;
+    allKeys.forEach(k => {
+      if (created && k < created) return;
+      if (!days[s.id]?.[k]?.checkedIn) out.push({ employeeId: s.id, name: s.name, dept: s.dept || '', dateKey: k });
+    });
+  });
+  return out;
+}
+
 function buildCheckinMessage(entry) {
   const isIn = entry.type === 'in';
   const icon  = isIn ? '✅' : '🚪';
@@ -2563,6 +2690,31 @@ function toast(msg, type='info') {
   t.textContent = msg; t.className = 'show ' + type;
   clearTimeout(t._t); t._t = setTimeout(() => t.className = '', 3200);
 }
+function statusBadge(p) {
+  if (!p) return '';
+  if (p.status === 'late')  return `<span class="badge late" title="Expected by ${p.expected}">Late ${fmtMins(p.minutes)}</span>`;
+  if (p.status === 'early') return `<span class="badge early" title="Expected until ${p.expected}">Left early ${fmtMins(p.minutes)}</span>`;
+  return `<span class="badge ontime">On time</span>`;
+}
+// Adds l._punct to each log (first check-in / last check-out of each day)
+function annotateStatus(list) {
+  const { statusByLog } = analyzeAttendance(list);
+  list.forEach(l => { l._punct = statusByLog.get(l) || null; });
+  return list;
+}
+function absentHtml(a) {
+  return `<div class="log-item absent-row">
+    <div class="log-photo-empty">—</div>
+    <div class="log-meta">
+      <div class="log-name">${a.name||a.employeeId}</div>
+      <div class="log-info">${a.dept||''} · ${a.employeeId}</div>
+    </div>
+    <div class="log-right">
+      <span class="badge missing">Absent</span>
+      <span class="log-time">${fmtDateKey(a.dateKey)}</span>
+    </div>
+  </div>`;
+}
 function logHtml(l) {
   const photoEl = l.photo
     ? `<img class="log-photo" src="${l.photo}" alt="selfie" onclick='openModal(${JSON.stringify(l).replace(/'/g,"&#39;")})' title="Click to enlarge">`
@@ -2579,6 +2731,7 @@ function logHtml(l) {
     </div>
     <div class="log-right">
       <span class="badge ${l.type}">${l.type==='in'?'Check-In':'Check-Out'}</span>
+      ${statusBadge(l._punct)}
       <span class="log-time">${fmtDatetime(l.time)}</span>
       ${locBtn}
     </div>
@@ -2738,6 +2891,15 @@ if (IS_ADMIN) {
 }
 
 function startRealtimeListeners() {
+  // Keep this browser's schedule copy in step with Firestore (used for status everywhere)
+  db.collection('settings').doc('schedules').onSnapshot(doc => {
+    if (!doc.exists) return;
+    const data = doc.data();
+    localStorage.setItem('fa_dept_schedules', JSON.stringify(data.schedules || {}));
+    localStorage.setItem('fa_emp_schedules', JSON.stringify(data.employeeOverrides || {}));
+    localStorage.setItem('fa_work_days', JSON.stringify(Array.isArray(data.workDays) ? data.workDays : DEFAULT_WORK_DAYS));
+  }, e => console.warn('Schedule sync failed:', e.message));
+
   db.collection('staff').orderBy('name').onSnapshot(snap => {
     staff = snap.docs.map(d => ({ docId: d.id, ...d.data() }));
     renderStaffTable(); renderDeptChart(); refreshDashStats();
@@ -2751,7 +2913,7 @@ function startRealtimeListeners() {
     .orderBy('timestamp', 'desc')
     .limit(100)
     .onSnapshot(snap => {
-      logsCache = snap.docs.map(d => ({ docId: d.id, ...d.data(), time: d.data().timestamp?.toDate?.()?.toISOString() || new Date().toISOString() }));
+      logsCache = annotateStatus(snap.docs.map(d => ({ docId: d.id, ...d.data(), time: d.data().timestamp?.toDate?.()?.toISOString() || new Date().toISOString() })));
       refreshDashStats(); renderDashRecent(); renderDashStatus();
       if (document.getElementById('page-logs').classList.contains('active')) renderLogList(logsCache);
 
@@ -2975,6 +3137,7 @@ function renderDeptChart() {
 }
 
 let loadedLogs = [];
+let loadedAbsences = [];
 function initLogFilters() {
   // Default: today in both From and To
   const today = new Date().toISOString().slice(0,10);
@@ -3007,10 +3170,27 @@ async function loadLogs() {
     if (toVal)   { const d2 = new Date(toVal); d2.setHours(23,59,59,999); q = q.where('timestamp','<=',d2); }
     q = q.orderBy('timestamp','desc').limit(500);
     const snap = await q.get();
-    loadedLogs = snap.docs.map(d => ({ docId: d.id, ...d.data(), time: d.data().timestamp?.toDate?.()?.toISOString() || new Date().toISOString() }));
+    loadedLogs = annotateStatus(snap.docs.map(d => ({ docId: d.id, ...d.data(), time: d.data().timestamp?.toDate?.()?.toISOString() || new Date().toISOString() })));
+    const statusVal = document.getElementById('log-status')?.value;
+    const empName = empVal ? staff.find(s=>s.id===empVal)?.name : null;
+    if (statusVal === 'absent') {
+      if (!fromVal || !toVal) {
+        document.getElementById('log-list').innerHTML = '<div style="color:var(--muted);font-size:13px;padding:20px;text-align:center">Pick a From and To date to see absences</div>';
+        return;
+      }
+      const { days } = analyzeAttendance(loadedLogs);
+      const who = empVal ? staff.filter(s => s.id === empVal) : staff;
+      const absences = findAbsences(who, days, fromVal, toVal).sort((a,b) => b.dateKey.localeCompare(a.dateKey) || (a.name||'').localeCompare(b.name||''));
+      loadedAbsences = absences;
+      const el = document.getElementById('log-list');
+      el.innerHTML = absences.length ? absences.map(absentHtml).join('')
+        : `<div style="color:var(--muted);font-size:13px;padding:20px;text-align:center">No absences${empName ? ` for ${empName}` : ''} in this period</div>`;
+      return;
+    }
+    loadedAbsences = [];
     let list = loadedLogs;
     if (typeVal) list = list.filter(l => l.type === typeVal);
-    const empName = empVal ? staff.find(s=>s.id===empVal)?.name : null;
+    if (statusVal) list = list.filter(l => l._punct?.status === statusVal);
     renderLogList(list, empName);
   } catch(e) {
     console.error('loadLogs error:', e.code, e.message, e);
@@ -3038,10 +3218,13 @@ async function clearTodayLogs() {
   toast("Today's logs cleared", 'info');
 }
 function exportCSV() {
-  const list = loadedLogs.length ? loadedLogs : logsCache;
-  if (!list.length) { toast('No data to export', 'info'); return; }
-  let csv = 'Name,ID,Department,Type,Time\n';
-  list.forEach(l => csv += `"${l.name}","${l.employeeId}","${l.dept}","${l.type==='in'?'Check-In':'Check-Out'}","${fmtDatetime(l.time)}"\n`);
+  const absentMode = document.getElementById('log-status')?.value === 'absent';
+  const list = absentMode ? [] : (loadedLogs.length ? loadedLogs : logsCache);
+  if (!list.length && !loadedAbsences.length) { toast('No data to export', 'info'); return; }
+  const stTxt = p => !p ? '' : p.status === 'late' ? `Late ${p.minutes} min` : p.status === 'early' ? `Left early ${p.minutes} min` : 'On time';
+  let csv = 'Name,ID,Department,Type,Time,Status\n';
+  list.forEach(l => csv += `"${l.name}","${l.employeeId}","${l.dept}","${l.type==='in'?'Check-In':'Check-Out'}","${fmtDatetime(l.time)}","${stTxt(l._punct)}"\n`);
+  loadedAbsences.forEach(a => csv += `"${a.name}","${a.employeeId}","${a.dept}","—","${fmtDateKey(a.dateKey)}","Absent"\n`);
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
   a.download = `attendance_${new Date().toISOString().slice(0,10)}.csv`;
@@ -3155,7 +3338,7 @@ async function calculateSalary() {
   if (!monthVal) { toast('Pick a month first', 'error'); return; }
 
   const tbody = document.getElementById('salary-tbody');
-  tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:20px"><span class="spinner"></span>Calculating...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;color:var(--muted);padding:20px"><span class="spinner"></span>Calculating...</td></tr>`;
 
   const [year, month] = monthVal.split('-').map(Number);
   const rangeStart = new Date(year, month - 1, 1, 0, 0, 0);
@@ -3202,6 +3385,25 @@ async function calculateSalary() {
         byEmployee[empId] = { name: staffRecord?.name || empId, dept: staffRecord?.dept || '', days: {} };
       }
     });
+
+    // Every current staff member appears, so someone with no check-ins at all
+    // still shows up with their absent days.
+    staff.forEach(s => {
+      if (!byEmployee[s.id]) byEmployee[s.id] = { name: s.name, dept: s.dept || '', days: {} };
+    });
+
+    // Late / left early / absent for the month
+    const att = analyzeAttendance(logs);
+    const lastDay = new Date(year, month, 0).getDate();
+    const monthFrom = `${monthVal}-01`, monthTo = `${monthVal}-${String(lastDay).padStart(2,'0')}`;
+    const absences = findAbsences(staff, att.days, monthFrom, monthTo);
+    const attIssues = [];
+    Object.entries(att.days).forEach(([empId, dmap]) => Object.values(dmap).forEach(d => {
+      if (d.dateKey < monthFrom || d.dateKey > monthTo) return;
+      if (d.late)  attIssues.push({ employeeId: empId, dateKey: d.dateKey, kind: 'late',  minutes: d.late.minutes,  expected: d.late.expected });
+      if (d.early) attIssues.push({ employeeId: empId, dateKey: d.dateKey, kind: 'early', minutes: d.early.minutes, expected: d.early.expected });
+    }));
+    absences.forEach(a => attIssues.push({ employeeId: a.employeeId, dateKey: a.dateKey, kind: 'absent' }));
 
     const results = [];
     const flagged = [];
@@ -3254,18 +3456,28 @@ async function calculateSalary() {
       const extraTotal = extraItems.reduce((s, item) => s + (item.amount || 0), 0);
       const basePay = totalHours * rate;
 
+      const mine = attIssues.filter(i => i.employeeId === empId);
+      const lates = mine.filter(i => i.kind === 'late'), earlies = mine.filter(i => i.kind === 'early');
       results.push({
         employeeId: empId, name: info.name, dept: info.dept,
         daysPresent, hours: totalHours, rate, basePay,
         extraTotal, extraItems, pay: basePay + extraTotal,
+        lateDays: lates.length, lateMins: lates.reduce((t,i) => t + i.minutes, 0),
+        earlyDays: earlies.length, earlyMins: earlies.reduce((t,i) => t + i.minutes, 0),
+        absentDays: mine.filter(i => i.kind === 'absent').length,
       });
     });
 
     results.sort((a,b) => b.pay - a.pay);
-    lastSalaryResult = { month: monthVal, results, flagged };
+    const nameOf = id => results.find(r => r.employeeId === id)?.name || id;
+    const deptOf = id => results.find(r => r.employeeId === id)?.dept || '';
+    attIssues.forEach(i => { i.name = nameOf(i.employeeId); i.dept = deptOf(i.employeeId); });
+    attIssues.sort((a,b) => (a.name||'').localeCompare(b.name||'') || a.dateKey.localeCompare(b.dateKey));
+    lastSalaryResult = { month: monthVal, results, flagged, attIssues };
     renderSalaryTable(results, flagged);
+    renderAttendanceIssues(attIssues);
   } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--rl);padding:20px">Error: ${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;color:var(--rl);padding:20px">Error: ${e.message}</td></tr>`;
   }
 }
 
@@ -3276,13 +3488,13 @@ function renderSalaryTable(results, flagged) {
   const totalExtra = results.reduce((s,r) => s + r.extraTotal, 0);
   const totalPay   = results.reduce((s,r) => s + r.pay, 0);
 
-  document.getElementById('sal-staff').textContent = totalStaff;
+  document.getElementById('sal-staff').textContent = results.filter(r => r.pay > 0).length;
   document.getElementById('sal-hours').textContent = totalHours.toFixed(1);
   document.getElementById('sal-extra').textContent = '$' + totalExtra.toFixed(2);
   document.getElementById('sal-total').textContent = '$' + totalPay.toFixed(2);
 
   if (!results.length) {
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:20px">No check-in activity or extra pay found for this month</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;color:var(--muted);padding:20px">No check-in activity or extra pay found for this month</td></tr>`;
   } else {
     tbody.innerHTML = results.map(r => {
       const extraLabel = r.extraTotal > 0
@@ -3292,6 +3504,9 @@ function renderSalaryTable(results, flagged) {
       <td><div style="display:flex;align-items:center;gap:10px"><div class="av">${initials(r.name||'?')}</div><div style="font-weight:600">${r.name||r.employeeId}</div></div></td>
       <td style="font-size:12px">${r.dept||'—'}</td>
       <td style="font-size:12px">${r.daysPresent}</td>
+      <td class="att-count">${r.lateDays ? `<span style="color:#92400e;font-weight:600">${r.lateDays}×</span> <span class="sub">${fmtMins(r.lateMins)}</span>` : '—'}</td>
+      <td class="att-count">${r.earlyDays ? `<span style="color:#075985;font-weight:600">${r.earlyDays}×</span> <span class="sub">${fmtMins(r.earlyMins)}</span>` : '—'}</td>
+      <td class="att-count">${r.absentDays ? `<span style="color:var(--rl);font-weight:600">${r.absentDays} day${r.absentDays>1?'s':''}</span>` : '—'}</td>
       <td style="font-size:12px">${r.hours.toFixed(2)} hrs</td>
       <td style="font-size:12px">$${r.rate.toFixed(2)}/hr</td>
       <td style="font-size:12px">$${r.basePay.toFixed(2)}</td>
@@ -3322,6 +3537,38 @@ function renderSalaryTable(results, flagged) {
   }
 }
 
+function renderAttendanceIssues(issues) {
+  if (issues) {
+    renderAttendanceIssues._all = issues;
+    const sel = document.getElementById('att-emp-filter');
+    const ids = [...new Set(issues.map(i => i.employeeId))];
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">All employees</option>' + ids.map(id => {
+      const n = issues.find(i => i.employeeId === id).name;
+      return `<option value="${id}" ${id===cur?'selected':''}>${n}</option>`;
+    }).join('');
+  }
+  const all = renderAttendanceIssues._all || [];
+  const card = document.getElementById('salary-att-card');
+  card.style.display = all.length ? 'block' : 'none';
+  const f = document.getElementById('att-emp-filter').value;
+  const list = f ? all.filter(i => i.employeeId === f) : all;
+  document.getElementById('salary-att-list').innerHTML = list.map(i => {
+    const badge = i.kind === 'absent' ? '<span class="badge missing">Absent</span>'
+      : i.kind === 'late' ? `<span class="badge late">Late ${fmtMins(i.minutes)}</span>`
+      : `<span class="badge early">Left early ${fmtMins(i.minutes)}</span>`;
+    const note = i.kind === 'late' ? `Expected in by ${i.expected}` : i.kind === 'early' ? `Expected until ${i.expected}` : 'No check-in on a working day';
+    return `<div class="log-item">
+      <div class="log-meta">
+        <div class="log-name">${i.name}</div>
+        <div class="log-info">${fmtDateKey(i.dateKey)} · ${note}</div>
+      </div>
+      <div class="log-right">${badge}</div>
+    </div>`;
+  }).join('');
+}
+window.renderAttendanceIssues = renderAttendanceIssues;
+
 function exportSalaryCSV() {
   if (!lastSalaryResult || !lastSalaryResult.results.length) { toast('Calculate salary first', 'info'); return; }
   const { month, results, flagged } = lastSalaryResult;
@@ -3330,14 +3577,27 @@ function exportSalaryCSV() {
 
   // ── Section 1: Payroll Breakdown ──
   csv += 'PAYROLL BREAKDOWN\n';
-  csv += 'Employee,ID,Department,Days Present,Hours Worked,Hourly Rate,Base Pay,Extra Pay,Total Pay\n';
+  csv += 'Employee,ID,Department,Days Present,Times Late,Late Minutes,Times Left Early,Early Minutes,Days Absent,Hours Worked,Hourly Rate,Base Pay,Extra Pay,Total Pay\n';
   results.forEach(r => {
-    csv += `"${r.name||''}","${r.employeeId}","${r.dept||''}",${r.daysPresent},${r.hours.toFixed(2)},${r.rate.toFixed(2)},${r.basePay.toFixed(2)},${r.extraTotal.toFixed(2)},${r.pay.toFixed(2)}\n`;
+    csv += `"${r.name||''}","${r.employeeId}","${r.dept||''}",${r.daysPresent},${r.lateDays||0},${r.lateMins||0},${r.earlyDays||0},${r.earlyMins||0},${r.absentDays||0},${r.hours.toFixed(2)},${r.rate.toFixed(2)},${r.basePay.toFixed(2)},${r.extraTotal.toFixed(2)},${r.pay.toFixed(2)}\n`;
   });
   const totalHours = results.reduce((s,r) => s + r.hours, 0);
   const totalExtra = results.reduce((s,r) => s + r.extraTotal, 0);
   const totalPay   = results.reduce((s,r) => s + r.pay, 0);
-  csv += `TOTAL,,,,${totalHours.toFixed(2)},,,${totalExtra.toFixed(2)},${totalPay.toFixed(2)}\n`;
+  csv += `TOTAL,,,,,,,,,${totalHours.toFixed(2)},,,${totalExtra.toFixed(2)},${totalPay.toFixed(2)}\n`;
+
+  // ── Late / left early / absent detail ──
+  const attIssues = lastSalaryResult.attIssues || [];
+  csv += '\nLATE, LEFT EARLY & ABSENT DETAIL\n';
+  if (attIssues.length) {
+    csv += 'Employee,ID,Date,Status,Minutes,Expected Time\n';
+    attIssues.forEach(i => {
+      const st = i.kind === 'late' ? 'Late' : i.kind === 'early' ? 'Left early' : 'Absent';
+      csv += `"${i.name||''}","${i.employeeId}","${i.dateKey}","${st}",${i.minutes||''},"${i.expected||''}"\n`;
+    });
+  } else {
+    csv += 'No late, early or absent days this month\n';
+  }
 
   // ── Section 2: Extra Pay Detail (so each bonus/allowance line item is traceable) ──
   const allExtraItems = results.flatMap(r => (r.extraItems||[]).map(item => ({ ...item, name: r.name })));
@@ -3561,7 +3821,15 @@ function getDeptSchedules() {
   try { return JSON.parse(localStorage.getItem(SCHEDULE_KEY) || '{}'); } catch { return {}; }
 }
 
+function loadWorkDaysUI() {
+  const el = document.getElementById('workday-picks');
+  if (!el) return;
+  const { workDays } = readScheduleCache();
+  const order = [1,2,3,4,5,6,0];
+  el.innerHTML = order.map(d => `<label><input type="checkbox" value="${d}" ${workDays.includes(d)?'checked':''}> ${WEEKDAY_NAMES[d]}</label>`).join('');
+}
 function loadDeptScheduleUI() {
+  loadWorkDaysUI();
   const schedules = getDeptSchedules();
   const container = document.getElementById('dept-schedule-list');
   if (!container) return;
@@ -3604,10 +3872,12 @@ async function saveDeptSchedules() {
     const endTime   = row.querySelector('.dept-end')?.value;
     if (dept && startTime && endTime) schedules[dept] = { startTime, endTime };
   });
+  const workDays = [...document.querySelectorAll('#workday-picks input:checked')].map(i => Number(i.value)).sort();
   localStorage.setItem(SCHEDULE_KEY, JSON.stringify(schedules));
+  localStorage.setItem('fa_work_days', JSON.stringify(workDays));
   const el = document.getElementById('schedule-status');
   try {
-    await db.collection('settings').doc('schedules').set({ schedules }, { merge: true });
+    await db.collection('settings').doc('schedules').set({ schedules, workDays }, { merge: true });
     el.style.color = 'var(--gl)';
     el.textContent = '✓ Schedules saved & synced to all devices';
   } catch(e) {
@@ -3901,10 +4171,19 @@ async function submitCheckin() {
   // otherwise fetch it fresh now (still never blocks check-in if unavailable).
   const location = cachedLocation !== undefined ? cachedLocation : await getCurrentLocation(6000);
   try {
+    // Make sure schedules are on this phone, then save the schedule that applied
+    // and the status on the log itself so reports never depend on it later.
+    const cachedSched = localStorage.getItem('fa_dept_schedules');
+    if (!cachedSched || cachedSched === '{}') await syncSchedules();
+    const nowIso = new Date().toISOString();
+    const sched = resolveSchedule(selectedPerson.id, selectedPerson.dept || '');
+    const punct = eventPunctuality(selectedType, nowIso, sched);
     const entry = {
       name: selectedPerson.name, employeeId: selectedPerson.id, dept: selectedPerson.dept || '',
       type: selectedType, photo: compressed, location: location || null,
-      timestamp: firebase.firestore.FieldValue.serverTimestamp(), clientTime: new Date().toISOString()
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(), clientTime: nowIso,
+      schedule: sched ? { startTime: sched.startTime, endTime: sched.endTime } : null,
+      punctuality: punct ? { status: punct.status, minutes: punct.minutes } : null,
     };
     await db.collection('logs').add(entry);
     notifyCheckin(entry); // fire-and-forget — never blocks check-in
