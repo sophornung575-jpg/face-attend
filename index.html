@@ -68,6 +68,20 @@ input,select{font-family:inherit;-webkit-appearance:none}
 .badge.early{background:#e0f2fe;color:#075985}
 .badge.missing{background:var(--rd);color:var(--rl)}
 .badge.ontime{background:var(--surface);color:var(--muted)}
+.badge.leave{background:#ede9fe;color:#5b21b6}
+.badge.pending{background:#fef3c7;color:#92400e}
+.badge.approved{background:var(--gd);color:var(--gl)}
+.badge.rejected{background:var(--rd);color:var(--rl)}
+.tab-count{display:inline-block;min-width:18px;padding:1px 6px;margin-left:4px;border-radius:99px;background:var(--red);color:#fff;font-size:10px;font-weight:700;line-height:16px;text-align:center}
+.leave-item{display:flex;align-items:flex-start;gap:12px;padding:12px;background:var(--surface);border-radius:8px;border-left:3px solid var(--border2)}
+.leave-item.pending{border-left-color:#d97706}
+.leave-item.approved{border-left-color:var(--green)}
+.leave-item.rejected{border-left-color:var(--red);opacity:.85}
+.leave-reason{font-size:12px;color:var(--text);margin-top:4px;line-height:1.45;word-break:break-word}
+.leave-note{font-size:11px;color:var(--muted);margin-top:3px}
+.leave-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.field textarea{width:100%;padding:9px 12px;background:var(--surface);border:1px solid var(--border2);border-radius:7px;color:var(--text);font-size:13px;outline:none;font-family:inherit;resize:vertical;min-height:70px}
+.field textarea:focus{border-color:var(--purple)}
 .log-item.absent-row{border-left:3px solid var(--rl)}
 .att-count{font-size:12px;white-space:nowrap}
 .att-count .sub{color:var(--muted);font-size:11px}
@@ -199,6 +213,22 @@ input,select{font-family:inherit;-webkit-appearance:none}
 .type-btn{padding:13px;border-radius:12px;font-size:14px;font-weight:700;border:1.5px solid var(--border2);background:var(--surface);color:var(--subtle);display:flex;align-items:center;justify-content:center;gap:8px}
 .type-btn.sel-in{border-color:var(--green);background:var(--gd);color:var(--gl)}
 .type-btn.sel-out{border-color:var(--red);background:rgba(220,38,38,.18);color:var(--rl)}
+.btn-leave-open{width:100%;padding:13px;border-radius:12px;font-size:14px;font-weight:700;border:1.5px dashed var(--border2);background:var(--bg);color:var(--subtle);display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:20px}
+.btn-leave-open:active{border-color:var(--purple);color:var(--pl)}
+.leave-head{display:flex;align-items:center;gap:12px;padding:20px 20px 16px}
+.leave-back{width:38px;height:38px;border-radius:10px;background:var(--surface);border:1px solid var(--border2);font-size:18px;color:var(--subtle);flex-shrink:0}
+.leave-head .lh-title{font-size:18px;font-weight:800;color:var(--pl)}
+.leave-head .lh-sub{font-size:12px;color:var(--muted)}
+.chip-row{display:grid;gap:8px;margin-bottom:18px}
+.chip-row.c3{grid-template-columns:repeat(3,1fr)}
+.chip{padding:11px 6px;border-radius:10px;font-size:13px;font-weight:700;border:1.5px solid var(--border2);background:var(--surface);color:var(--subtle);text-align:center;line-height:1.3}
+.chip.sel{border-color:var(--purple);background:var(--pd);color:var(--pl)}
+.leave-dates{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.leave-dates.single{grid-template-columns:1fr}
+.leave-summary{font-size:13px;color:var(--subtle);background:var(--surface);border-radius:10px;padding:10px 12px;margin-bottom:18px}
+.leave-summary b{color:var(--text)}
+.my-leave{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;background:var(--surface);border-radius:10px;font-size:13px}
+.my-leave .ml-sub{font-size:11px;color:var(--muted);margin-top:2px}
 .bottom-bar{position:fixed;bottom:0;left:0;right:0;padding:14px 16px 24px;background:var(--bg);border-top:1px solid var(--border)}
 .btn-continue{width:100%;padding:15px;border-radius:12px;font-size:16px;font-weight:700;background:var(--purple);color:#fff}
 .btn-continue:active:not(:disabled){background:#934407;transform:scale(.98)}
@@ -324,6 +354,7 @@ input,select{font-family:inherit;-webkit-appearance:none}
     <button class="tab" onclick="showTab('staff',this)">👥 Staff</button>
     <button class="tab" onclick="showTab('logs',this)">📋 Logs</button>
     <button class="tab" onclick="showTab('map',this)">🗺️ Map</button>
+    <button class="tab" onclick="showTab('leave',this)">🌴 Leave<span class="tab-count" id="leave-tab-count" style="display:none">0</span></button>
     <button class="tab" onclick="showTab('salary',this)">💰 Salary</button>
     <button class="tab" onclick="showTab('settings',this)">⚙️ Settings</button>
   </div>
@@ -441,7 +472,7 @@ input,select{font-family:inherit;-webkit-appearance:none}
         <div class="field" style="margin:0;min-width:110px;flex:1"><label>Type</label>
           <select id="log-type"><option value="">All</option><option value="in">Check-In</option><option value="out">Check-Out</option></select></div>
         <div class="field" style="margin:0;min-width:120px;flex:1"><label>Status</label>
-          <select id="log-status"><option value="">All</option><option value="late">Late</option><option value="early">Left early</option><option value="absent">Absent</option><option value="on_time">On time</option></select></div>
+          <select id="log-status"><option value="">All</option><option value="late">Late</option><option value="early">Left early</option><option value="absent">Absent</option><option value="leave">On leave</option><option value="on_time">On time</option></select></div>
         <button class="btn btn-ghost btn-sm" style="height:36px" onclick="loadLogs()">🔍 Filter</button>
         <button class="btn btn-ghost btn-sm" style="height:36px" onclick="clearLogDateFilter()">✕ Clear</button>
         <button class="btn btn-ghost btn-sm" style="height:36px" onclick="exportCSV()">📄 Export CSV</button>
@@ -466,6 +497,44 @@ input,select{font-family:inherit;-webkit-appearance:none}
       </div>
       <div id="map-status" style="font-size:12px;color:var(--muted);margin-bottom:10px"></div>
       <div id="map-view" style="height:480px;border-radius:10px;overflow:hidden;background:var(--surface)"></div>
+    </div>
+  </div>
+
+  <!-- LEAVE -->
+  <div class="page" id="page-leave">
+    <div class="page-title">Leave Requests</div>
+    <div class="page-sub">Staff ask for leave from the check-in page. Leave is unpaid — approved days show as "Leave" instead of "Absent" in Logs and Salary.</div>
+    <div class="grid4" style="margin-bottom:16px">
+      <div class="stat-tile"><div class="stat-val" id="lv-pending" style="color:#b45309">—</div><div class="stat-lbl">Waiting for you</div></div>
+      <div class="stat-tile"><div class="stat-val" id="lv-today" style="color:#5b21b6">—</div><div class="stat-lbl">On leave today</div></div>
+      <div class="stat-tile"><div class="stat-val" id="lv-month" style="color:var(--pl)">—</div><div class="stat-lbl">Leave days this month</div></div>
+      <div class="stat-tile"><div class="stat-val" id="lv-upcoming" style="color:var(--gl)">—</div><div class="stat-lbl">Upcoming (approved)</div></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px">
+        <div class="field" style="margin:0;min-width:130px;flex:1"><label>Status</label>
+          <select id="leave-status-filter" onchange="renderLeaveList()"><option value="pending">Waiting for approval</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="">All</option></select></div>
+        <div class="field" style="margin:0;min-width:150px;flex:1"><label>Employee</label>
+          <select id="leave-emp-filter" onchange="renderLeaveList()"><option value="">All Employees</option></select></div>
+        <div class="field" style="margin:0;min-width:130px;flex:1"><label>Month</label><input type="month" id="leave-month-filter" onchange="renderLeaveList()"></div>
+        <button class="btn btn-ghost btn-sm" style="height:36px" onclick="document.getElementById('leave-month-filter').value='';renderLeaveList()">✕ Clear</button>
+      </div>
+      <div class="log-scroll" id="leave-list" style="max-height:520px"><div style="color:var(--muted);font-size:13px;padding:20px;text-align:center"><span class="spinner"></span>Loading...</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">➕ Record leave for an employee</div>
+      <div class="page-sub" style="margin-bottom:12px">For leave agreed in person. It is saved as approved.</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <div class="field" style="margin:0;min-width:160px;flex:2"><label>Employee</label><select id="al-emp"></select></div>
+        <div class="field" style="margin:0;min-width:140px;flex:1"><label>Type</label>
+          <select id="al-type"><option value="sick">Sick leave</option><option value="annual">Annual leave</option><option value="personal">Personal / family</option></select></div>
+        <div class="field" style="margin:0;min-width:150px;flex:1"><label>Length</label>
+          <select id="al-duration" onchange="syncAdminLeaveDates()"><option value="full">Full day(s)</option><option value="am">Half day — morning</option><option value="pm">Half day — afternoon</option></select></div>
+        <div class="field" style="margin:0;min-width:130px;flex:1"><label>From</label><input type="date" id="al-from" onchange="syncAdminLeaveDates()"></div>
+        <div class="field" style="margin:0;min-width:130px;flex:1" id="al-to-wrap"><label>To</label><input type="date" id="al-to"></div>
+      </div>
+      <div class="field" style="margin:10px 0"><label>Reason (optional)</label><input type="text" id="al-reason" placeholder="e.g. Doctor's note received"></div>
+      <button class="btn btn-purple btn-sm" onclick="addLeaveByAdmin()">Save leave</button>
     </div>
   </div>
 
@@ -494,14 +563,14 @@ input,select{font-family:inherit;-webkit-appearance:none}
         <button class="btn btn-ghost btn-sm" onclick="openExtraPayPicker()">💵 Add Extra Pay for Employee...</button>
       </div>
       <div style="overflow-x:auto">
-        <table class="tbl"><thead><tr><th>Employee</th><th>Department</th><th>Days</th><th>Late</th><th>Left early</th><th>Absent</th><th>Hours</th><th>Rate</th><th>Base Pay</th><th>Extra Pay</th><th>Total</th><th></th></tr></thead>
-        <tbody id="salary-tbody"><tr><td colspan="12" style="text-align:center;color:var(--muted);padding:20px">Select a month and click Calculate</td></tr></tbody></table>
+        <table class="tbl"><thead><tr><th>Employee</th><th>Department</th><th>Days</th><th>Late</th><th>Left early</th><th>Absent</th><th>Leave</th><th>Hours</th><th>Rate</th><th>Base Pay</th><th>Extra Pay</th><th>Total</th><th></th></tr></thead>
+        <tbody id="salary-tbody"><tr><td colspan="13" style="text-align:center;color:var(--muted);padding:20px">Select a month and click Calculate</td></tr></tbody></table>
       </div>
     </div>
 
     <div class="card" id="salary-att-card" style="display:none">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">
-        <div class="card-title" style="margin-bottom:0">🕐 Late, left early & absent</div>
+        <div class="card-title" style="margin-bottom:0">🕐 Late, left early, absent & leave</div>
         <select id="att-emp-filter" onchange="renderAttendanceIssues()" style="padding:7px 10px;background:var(--bg);border:1px solid var(--border2);border-radius:6px;color:var(--text);font-size:13px"><option value="">All employees</option></select>
       </div>
       <div class="page-sub" style="margin-bottom:10px">Day by day, for checking before you pay. Only the first check-in and last check-out of each day are judged.</div>
@@ -691,9 +760,46 @@ input,select{font-family:inherit;-webkit-appearance:none}
         <button class="type-btn sel-in" id="tb-in" onclick="setType('in')">✅ Check In</button>
         <button class="type-btn" id="tb-out" onclick="setType('out')">🚪 Check Out</button>
       </div>
+      <button class="btn-leave-open" onclick="openLeave()">📝 Request Leave</button>
     </div>
     <div class="bottom-bar">
       <button class="btn-continue" id="btn-continue" disabled onclick="openCamera()">Continue →</button>
+    </div>
+  </div>
+
+  <!-- Leave request -->
+  <div class="screen" id="screen-leave">
+    <div class="leave-head">
+      <button class="leave-back" onclick="goTo('select')">←</button>
+      <div>
+        <div class="lh-title">Request Leave</div>
+        <div class="lh-sub" id="lv-who">—</div>
+      </div>
+    </div>
+    <div class="select-body">
+      <div class="section-label">Type of leave</div>
+      <div class="chip-row c3" id="lv-type-row">
+        <button class="chip sel" data-v="sick" onclick="setLeaveType('sick')">🤒<br>Sick</button>
+        <button class="chip" data-v="annual" onclick="setLeaveType('annual')">🏖️<br>Annual</button>
+        <button class="chip" data-v="personal" onclick="setLeaveType('personal')">👨‍👩‍👧<br>Personal</button>
+      </div>
+      <div class="section-label">How long?</div>
+      <div class="chip-row c3" id="lv-dur-row">
+        <button class="chip sel" data-v="full" onclick="setLeaveDuration('full')">Full day</button>
+        <button class="chip" data-v="am" onclick="setLeaveDuration('am')">Half day<br>morning</button>
+        <button class="chip" data-v="pm" onclick="setLeaveDuration('pm')">Half day<br>afternoon</button>
+      </div>
+      <div class="leave-dates" id="lv-dates">
+        <div class="field"><label id="lv-from-label">From</label><input type="date" id="lv-from" onchange="updateLeaveSummary()"></div>
+        <div class="field" id="lv-to-wrap"><label>To</label><input type="date" id="lv-to" onchange="updateLeaveSummary()"></div>
+      </div>
+      <div class="field"><label>Reason</label><textarea id="lv-reason" maxlength="300" placeholder="Tell your manager why (required)"></textarea></div>
+      <div class="leave-summary" id="lv-summary">—</div>
+      <div class="section-label">My recent requests</div>
+      <div class="log-scroll" id="lv-mine"><div style="color:var(--muted);font-size:13px;padding:10px;text-align:center">—</div></div>
+    </div>
+    <div class="bottom-bar">
+      <button class="btn-continue" id="btn-leave-submit" onclick="submitLeave()">Send Request →</button>
     </div>
   </div>
 
@@ -2619,8 +2725,9 @@ function getPunctualityStatus(entry) {
 // Uses the schedule saved on the log at check-in time when present, otherwise the
 // current schedule (this is what fills in status for older logs).
 // Returns { statusByLog: Map(log -> punctuality), days: { [empId]: { [dateKey]: {...} } } }
-function analyzeAttendance(logs, cfg) {
+function analyzeAttendance(logs, cfg, leaveIdx) {
   cfg = cfg || readScheduleCache();
+  leaveIdx = leaveIdx || {};
   const groups = {};
   logs.forEach(l => {
     if (!l.employeeId) return;
@@ -2637,11 +2744,21 @@ function analyzeAttendance(logs, cfg) {
     const day = { dateKey, checkedIn: !!firstIn, late: null, early: null };
     if (firstIn) {
       const p = eventPunctuality('in', entryDate(firstIn), firstIn.schedule || resolveSchedule(empId, firstIn.dept, cfg));
-      if (p) { statusByLog.set(firstIn, p); if (p.status === 'late') day.late = p; }
+      if (p) {
+        // Morning half-day leave: coming in at lunch is expected, not late
+        if (p.status === 'late' && leaveIdx[empId + '|' + dateKey]?.duration === 'am') {
+          statusByLog.set(firstIn, { status: 'leave', minutes: 0, expected: p.expected, half: 'am' });
+        } else { statusByLog.set(firstIn, p); if (p.status === 'late') day.late = p; }
+      }
     }
     if (lastOut && (!firstIn || entryDate(lastOut) > entryDate(firstIn))) {
       const p = eventPunctuality('out', entryDate(lastOut), lastOut.schedule || resolveSchedule(empId, lastOut.dept, cfg));
-      if (p) { statusByLog.set(lastOut, p); if (p.status === 'early') day.early = p; }
+      if (p) {
+        // Afternoon half-day leave: leaving at lunch is expected, not early
+        if (p.status === 'early' && leaveIdx[empId + '|' + dateKey]?.duration === 'pm') {
+          statusByLog.set(lastOut, { status: 'leave', minutes: 0, expected: p.expected, half: 'pm' });
+        } else { statusByLog.set(lastOut, p); if (p.status === 'early') day.early = p; }
+      }
     }
     (days[empId] = days[empId] || {})[dateKey] = day;
   });
@@ -2650,8 +2767,9 @@ function analyzeAttendance(logs, cfg) {
 
 // Working days between two date keys (inclusive) with no check-in = absent.
 // Never counts days in the future or before the employee was added.
-function findAbsences(staffList, days, fromKey, toKey, cfg) {
+function findAbsences(staffList, days, fromKey, toKey, cfg, leaveIdx) {
   cfg = cfg || readScheduleCache();
+  leaveIdx = leaveIdx || {};
   const todayKey = ppParts(new Date()).dateKey;
   if (toKey > todayKey) toKey = todayKey;
   const out = [];
@@ -2666,10 +2784,75 @@ function findAbsences(staffList, days, fromKey, toKey, cfg) {
     const created = s.createdAt?.toDate ? ppParts(s.createdAt.toDate()).dateKey : null;
     allKeys.forEach(k => {
       if (created && k < created) return;
+      if (leaveIdx[s.id + '|' + k]?.duration === 'full') return; // on approved leave
       if (!days[s.id]?.[k]?.checkedIn) out.push({ employeeId: s.id, name: s.name, dept: s.dept || '', dateKey: k });
     });
   });
   return out;
+}
+
+// ═══════════════════════════════════════════════════════════
+// LEAVE — requested by staff, approved by admin. All leave is unpaid.
+// Firestore: leaves/{id} = { employeeId, name, dept, type, duration ('full'|'am'|'pm'),
+//   from, to ('YYYY-MM-DD', Cambodia dates), days, reason, status ('pending'|'approved'|'rejected'),
+//   source ('staff'|'admin'), createdAt, decidedAt, adminNote }
+// ═══════════════════════════════════════════════════════════
+const LEAVE_TYPES = { sick: 'Sick leave', annual: 'Annual leave', personal: 'Personal / family' };
+const LEAVE_ICONS = { sick: '🤒', annual: '🏖️', personal: '👨‍👩‍👧' };
+const LEAVE_DURATIONS = { full: 'Full day', am: 'Half day (morning)', pm: 'Half day (afternoon)' };
+let leaveIdxCache = {}; // "employeeId|YYYY-MM-DD" -> approved leave, kept fresh on the admin page
+
+function escHtml(v) {
+  return String(v ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+function todayKeyPP() { return ppParts(new Date()).dateKey; }
+function weekdayOfKey(k) { const [y,m,d] = k.split('-').map(Number); return new Date(Date.UTC(y,m-1,d)).getUTCDay(); }
+function dateKeysBetween(fromKey, toKey) {
+  const out = [];
+  if (!fromKey || !toKey || fromKey > toKey) return out;
+  const [fy,fm,fd] = fromKey.split('-').map(Number);
+  const [ty,tm,td] = toKey.split('-').map(Number);
+  const end = new Date(Date.UTC(ty,tm-1,td));
+  for (let d = new Date(Date.UTC(fy,fm-1,fd)); d <= end && out.length < 400; d.setUTCDate(d.getUTCDate()+1)) out.push(d.toISOString().slice(0,10));
+  return out;
+}
+// Working days the leave covers (half days count 0.5)
+function leaveDayCount(fromKey, toKey, duration, cfg) {
+  cfg = cfg || readScheduleCache();
+  const n = dateKeysBetween(fromKey, toKey).filter(k => cfg.workDays.includes(weekdayOfKey(k))).length;
+  return duration === 'full' ? n : n * 0.5;
+}
+function fmtDays(n) { return `${n} day${n === 1 ? '' : 's'}`; }
+function fmtLeaveRange(l) {
+  return l.from === l.to ? fmtDateKey(l.from) : `${fmtDateKey(l.from)} – ${fmtDateKey(l.to)}`;
+}
+// Approved leave, indexed by employee and day
+function buildLeaveIndex(leaves) {
+  const idx = {};
+  (leaves || []).forEach(l => {
+    if (l.status !== 'approved' || !l.employeeId) return;
+    dateKeysBetween(l.from, l.to).forEach(k => { idx[l.employeeId + '|' + k] = l; });
+  });
+  return idx;
+}
+async function notifyLeave(event, leave, adminNote) {
+  if (!WORKER_URL) return;
+  try {
+    // No "type" field on purpose: an older Worker rejects this request instead of
+    // sending it as a check-out message.
+    const res = await fetch(WORKER_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        kind: 'leave', event,
+        name: leave.name, employeeId: leave.employeeId, dept: leave.dept || '',
+        leaveType: LEAVE_TYPES[leave.type] || leave.type, leaveIcon: LEAVE_ICONS[leave.type] || '📝',
+        duration: LEAVE_DURATIONS[leave.duration] || leave.duration,
+        dates: fmtLeaveRange(leave), days: leave.days, reason: leave.reason || '', note: adminNote || '',
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!data.ok) console.warn('[Telegram] leave message not sent — deploy the updated Worker', data);
+  } catch(e) { console.warn('[Telegram] leave notify failed:', e.message); }
 }
 
 function buildCheckinMessage(entry) {
@@ -2694,11 +2877,12 @@ function statusBadge(p) {
   if (!p) return '';
   if (p.status === 'late')  return `<span class="badge late" title="Expected by ${p.expected}">Late ${fmtMins(p.minutes)}</span>`;
   if (p.status === 'early') return `<span class="badge early" title="Expected until ${p.expected}">Left early ${fmtMins(p.minutes)}</span>`;
+  if (p.status === 'leave') return `<span class="badge leave">Half-day leave</span>`;
   return `<span class="badge ontime">On time</span>`;
 }
 // Adds l._punct to each log (first check-in / last check-out of each day)
 function annotateStatus(list) {
-  const { statusByLog } = analyzeAttendance(list);
+  const { statusByLog } = analyzeAttendance(list, null, leaveIdxCache);
   list.forEach(l => { l._punct = statusByLog.get(l) || null; });
   return list;
 }
@@ -2710,7 +2894,7 @@ function absentHtml(a) {
       <div class="log-info">${a.dept||''} · ${a.employeeId}</div>
     </div>
     <div class="log-right">
-      <span class="badge missing">Absent</span>
+      ${a.leave ? `<span class="badge leave">${escHtml(LEAVE_TYPES[a.leave.type] || 'Leave')}${a.leave.duration !== 'full' ? ' · ½ day' : ''}</span>` : '<span class="badge missing">Absent</span>'}
       <span class="log-time">${fmtDateKey(a.dateKey)}</span>
     </div>
   </div>`;
@@ -2833,6 +3017,9 @@ let staff = [];
 let logsCache = [];
 let qrRendered = false;
 let unsubLogs = null;
+let leavesCache = [];      // all leave requests (admin)
+let unsubLeaves = null;
+let leaveFirstSnap = true;
 
 function openCfg() {
   if (cfg) {
@@ -2905,6 +3092,8 @@ function startRealtimeListeners() {
     renderStaffTable(); renderDeptChart(); refreshDashStats();
   }, e => { console.error(e); toast('Staff sync error', 'error'); });
 
+  startLeaveListener();
+
   const todayStart = new Date(); todayStart.setHours(0,0,0,0);
   if (unsubLogs) unsubLogs();
   let adminSnapshotReady = false; // skip notifications for initial load
@@ -2945,6 +3134,7 @@ function showTab(id, el) {
   if (id === 'logs')  { initLogFilters(); loadLogs(); }
   if (id === 'map')   { initMapFilters(); loadMap(); }
   if (id === 'salary') { initSalaryFilters(); }
+  if (id === 'leave')  { initLeavePage(); }
   if (id === 'settings') { loadTelegramSettings(); loadDeptScheduleUI(); loadEmpScheduleUI(); }
 }
 
@@ -2957,7 +3147,9 @@ function refreshDashStats() {
   const present = getPresentSet();
   document.getElementById('s-total').textContent   = staff.length;
   document.getElementById('s-present').textContent = present.size;
-  document.getElementById('s-absent').textContent  = Math.max(0, staff.length - present.size);
+  const tk = todayKeyPP();
+  const onLeave = staff.filter(s => !present.has(s.id) && leaveIdxCache[s.id + '|' + tk]?.duration === 'full').length;
+  document.getElementById('s-absent').textContent  = Math.max(0, staff.length - present.size - onLeave);
   document.getElementById('s-checkins').textContent = logsCache.filter(l=>l.type==='in').length;
 }
 function renderDashRecent() {
@@ -2971,13 +3163,18 @@ function renderDashStatus() {
   const present = getPresentSet();
   const lastSeen = {};
   logsCache.forEach(l => { if (!lastSeen[l.employeeId]) lastSeen[l.employeeId] = l; });
+  const tk = todayKeyPP();
   el.innerHTML = staff.map(s => {
     const here = present.has(s.id);
     const last = lastSeen[s.id];
-    return `<div class="log-item" style="border-left-color:${here?'var(--green)':'var(--border2)'}">
+    const lv = leaveIdxCache[s.id + '|' + tk];
+    const badge = here ? '<span class="badge present">Present</span>'
+      : lv ? `<span class="badge leave">${lv.duration === 'full' ? 'On leave' : 'Half-day leave'}</span>`
+      : '<span class="badge absent">Absent</span>';
+    return `<div class="log-item" style="border-left-color:${here?'var(--green)':lv?'#7c3aed':'var(--border2)'}">
       <div class="av">${initials(s.name)}</div>
       <div class="log-meta"><div class="log-name">${s.name}</div><div class="log-info">${s.dept}${last?' · '+fmtTime(last.time):''}</div></div>
-      <span class="badge ${here?'present':'absent'}">${here?'Present':'Absent'}</span>
+      ${badge}
     </div>`;
   }).join('');
 }
@@ -3173,14 +3370,32 @@ async function loadLogs() {
     loadedLogs = annotateStatus(snap.docs.map(d => ({ docId: d.id, ...d.data(), time: d.data().timestamp?.toDate?.()?.toISOString() || new Date().toISOString() })));
     const statusVal = document.getElementById('log-status')?.value;
     const empName = empVal ? staff.find(s=>s.id===empVal)?.name : null;
+    if (statusVal === 'leave') {
+      if (!fromVal || !toVal) {
+        document.getElementById('log-list').innerHTML = '<div style="color:var(--muted);font-size:13px;padding:20px;text-align:center">Pick a From and To date to see leave</div>';
+        return;
+      }
+      const rows = [];
+      dateKeysBetween(fromVal, toVal).forEach(k => {
+        (empVal ? staff.filter(s => s.id === empVal) : staff).forEach(s => {
+          const lv = leaveIdxCache[s.id + '|' + k];
+          if (lv && readScheduleCache().workDays.includes(weekdayOfKey(k))) rows.push({ employeeId: s.id, name: s.name, dept: s.dept || '', dateKey: k, leave: lv });
+        });
+      });
+      rows.sort((a,b) => b.dateKey.localeCompare(a.dateKey) || (a.name||'').localeCompare(b.name||''));
+      loadedAbsences = rows;
+      document.getElementById('log-list').innerHTML = rows.length ? rows.map(absentHtml).join('')
+        : `<div style="color:var(--muted);font-size:13px;padding:20px;text-align:center">No approved leave${empName ? ` for ${empName}` : ''} in this period</div>`;
+      return;
+    }
     if (statusVal === 'absent') {
       if (!fromVal || !toVal) {
         document.getElementById('log-list').innerHTML = '<div style="color:var(--muted);font-size:13px;padding:20px;text-align:center">Pick a From and To date to see absences</div>';
         return;
       }
-      const { days } = analyzeAttendance(loadedLogs);
+      const { days } = analyzeAttendance(loadedLogs, null, leaveIdxCache);
       const who = empVal ? staff.filter(s => s.id === empVal) : staff;
-      const absences = findAbsences(who, days, fromVal, toVal).sort((a,b) => b.dateKey.localeCompare(a.dateKey) || (a.name||'').localeCompare(b.name||''));
+      const absences = findAbsences(who, days, fromVal, toVal, null, leaveIdxCache).sort((a,b) => b.dateKey.localeCompare(a.dateKey) || (a.name||'').localeCompare(b.name||''));
       loadedAbsences = absences;
       const el = document.getElementById('log-list');
       el.innerHTML = absences.length ? absences.map(absentHtml).join('')
@@ -3338,7 +3553,7 @@ async function calculateSalary() {
   if (!monthVal) { toast('Pick a month first', 'error'); return; }
 
   const tbody = document.getElementById('salary-tbody');
-  tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;color:var(--muted);padding:20px"><span class="spinner"></span>Calculating...</td></tr>`;
+  tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;color:var(--muted);padding:20px"><span class="spinner"></span>Calculating...</td></tr>`;
 
   const [year, month] = monthVal.split('-').map(Number);
   const rangeStart = new Date(year, month - 1, 1, 0, 0, 0);
@@ -3365,6 +3580,10 @@ async function calculateSalary() {
       extraByEmployee[data.employeeId].push({ docId: d.id, ...data });
     });
     currentMonthExtraPay = extraByEmployee; // cache for the modal to read/edit
+
+    // Approved leave (unpaid) — shown as Leave instead of Absent
+    const leaveSnap = await db.collection('leaves').where('status', '==', 'approved').get();
+    const salLeaveIdx = buildLeaveIndex(leaveSnap.docs.map(d => ({ docId: d.id, ...d.data() })));
 
     // Group logs by employeeId, then by calendar day
     const byEmployee = {};
@@ -3393,10 +3612,10 @@ async function calculateSalary() {
     });
 
     // Late / left early / absent for the month
-    const att = analyzeAttendance(logs);
+    const att = analyzeAttendance(logs, null, salLeaveIdx);
     const lastDay = new Date(year, month, 0).getDate();
     const monthFrom = `${monthVal}-01`, monthTo = `${monthVal}-${String(lastDay).padStart(2,'0')}`;
-    const absences = findAbsences(staff, att.days, monthFrom, monthTo);
+    const absences = findAbsences(staff, att.days, monthFrom, monthTo, null, salLeaveIdx);
     const attIssues = [];
     Object.entries(att.days).forEach(([empId, dmap]) => Object.values(dmap).forEach(d => {
       if (d.dateKey < monthFrom || d.dateKey > monthTo) return;
@@ -3404,6 +3623,15 @@ async function calculateSalary() {
       if (d.early) attIssues.push({ employeeId: empId, dateKey: d.dateKey, kind: 'early', minutes: d.early.minutes, expected: d.early.expected });
     }));
     absences.forEach(a => attIssues.push({ employeeId: a.employeeId, dateKey: a.dateKey, kind: 'absent' }));
+    const salCfg = readScheduleCache();
+    const salTodayKey = todayKeyPP();
+    Object.entries(salLeaveIdx).forEach(([key, lv]) => {
+      const dateKey = key.split('|')[1];
+      if (dateKey < monthFrom || dateKey > monthTo || dateKey > salTodayKey) return;
+      if (!salCfg.workDays.includes(weekdayOfKey(dateKey))) return;
+      if (!byEmployee[lv.employeeId]) byEmployee[lv.employeeId] = { name: lv.name, dept: lv.dept || '', days: {} };
+      attIssues.push({ employeeId: lv.employeeId, dateKey, kind: 'leave', leaveType: lv.type, half: lv.duration !== 'full' ? lv.duration : null });
+    });
 
     const results = [];
     const flagged = [];
@@ -3465,6 +3693,7 @@ async function calculateSalary() {
         lateDays: lates.length, lateMins: lates.reduce((t,i) => t + i.minutes, 0),
         earlyDays: earlies.length, earlyMins: earlies.reduce((t,i) => t + i.minutes, 0),
         absentDays: mine.filter(i => i.kind === 'absent').length,
+        leaveDays: mine.filter(i => i.kind === 'leave').reduce((t,i) => t + (i.half ? 0.5 : 1), 0),
       });
     });
 
@@ -3477,7 +3706,7 @@ async function calculateSalary() {
     renderSalaryTable(results, flagged);
     renderAttendanceIssues(attIssues);
   } catch(e) {
-    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;color:var(--rl);padding:20px">Error: ${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;color:var(--rl);padding:20px">Error: ${e.message}</td></tr>`;
   }
 }
 
@@ -3494,7 +3723,7 @@ function renderSalaryTable(results, flagged) {
   document.getElementById('sal-total').textContent = '$' + totalPay.toFixed(2);
 
   if (!results.length) {
-    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;color:var(--muted);padding:20px">No check-in activity or extra pay found for this month</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="13" style="text-align:center;color:var(--muted);padding:20px">No check-in activity or extra pay found for this month</td></tr>`;
   } else {
     tbody.innerHTML = results.map(r => {
       const extraLabel = r.extraTotal > 0
@@ -3507,6 +3736,7 @@ function renderSalaryTable(results, flagged) {
       <td class="att-count">${r.lateDays ? `<span style="color:#92400e;font-weight:600">${r.lateDays}×</span> <span class="sub">${fmtMins(r.lateMins)}</span>` : '—'}</td>
       <td class="att-count">${r.earlyDays ? `<span style="color:#075985;font-weight:600">${r.earlyDays}×</span> <span class="sub">${fmtMins(r.earlyMins)}</span>` : '—'}</td>
       <td class="att-count">${r.absentDays ? `<span style="color:var(--rl);font-weight:600">${r.absentDays} day${r.absentDays>1?'s':''}</span>` : '—'}</td>
+      <td class="att-count">${r.leaveDays ? `<span style="color:#5b21b6;font-weight:600">${fmtDays(r.leaveDays)}</span> <span class="sub">unpaid</span>` : '—'}</td>
       <td style="font-size:12px">${r.hours.toFixed(2)} hrs</td>
       <td style="font-size:12px">$${r.rate.toFixed(2)}/hr</td>
       <td style="font-size:12px">$${r.basePay.toFixed(2)}</td>
@@ -3554,10 +3784,13 @@ function renderAttendanceIssues(issues) {
   const f = document.getElementById('att-emp-filter').value;
   const list = f ? all.filter(i => i.employeeId === f) : all;
   document.getElementById('salary-att-list').innerHTML = list.map(i => {
-    const badge = i.kind === 'absent' ? '<span class="badge missing">Absent</span>'
+    const badge = i.kind === 'leave' ? `<span class="badge leave">${i.half ? 'Half-day leave' : 'Leave'}</span>`
+      : i.kind === 'absent' ? '<span class="badge missing">Absent</span>'
       : i.kind === 'late' ? `<span class="badge late">Late ${fmtMins(i.minutes)}</span>`
       : `<span class="badge early">Left early ${fmtMins(i.minutes)}</span>`;
-    const note = i.kind === 'late' ? `Expected in by ${i.expected}` : i.kind === 'early' ? `Expected until ${i.expected}` : 'No check-in on a working day';
+    const note = i.kind === 'late' ? `Expected in by ${i.expected}` : i.kind === 'early' ? `Expected until ${i.expected}`
+      : i.kind === 'leave' ? `${LEAVE_TYPES[i.leaveType] || 'Leave'}${i.half === 'am' ? ' · morning' : i.half === 'pm' ? ' · afternoon' : ''} · unpaid`
+      : 'No check-in on a working day';
     return `<div class="log-item">
       <div class="log-meta">
         <div class="log-name">${i.name}</div>
@@ -3577,22 +3810,23 @@ function exportSalaryCSV() {
 
   // ── Section 1: Payroll Breakdown ──
   csv += 'PAYROLL BREAKDOWN\n';
-  csv += 'Employee,ID,Department,Days Present,Times Late,Late Minutes,Times Left Early,Early Minutes,Days Absent,Hours Worked,Hourly Rate,Base Pay,Extra Pay,Total Pay\n';
+  csv += 'Employee,ID,Department,Days Present,Times Late,Late Minutes,Times Left Early,Early Minutes,Days Absent,Leave Days (unpaid),Hours Worked,Hourly Rate,Base Pay,Extra Pay,Total Pay\n';
   results.forEach(r => {
-    csv += `"${r.name||''}","${r.employeeId}","${r.dept||''}",${r.daysPresent},${r.lateDays||0},${r.lateMins||0},${r.earlyDays||0},${r.earlyMins||0},${r.absentDays||0},${r.hours.toFixed(2)},${r.rate.toFixed(2)},${r.basePay.toFixed(2)},${r.extraTotal.toFixed(2)},${r.pay.toFixed(2)}\n`;
+    csv += `"${r.name||''}","${r.employeeId}","${r.dept||''}",${r.daysPresent},${r.lateDays||0},${r.lateMins||0},${r.earlyDays||0},${r.earlyMins||0},${r.absentDays||0},${r.leaveDays||0},${r.hours.toFixed(2)},${r.rate.toFixed(2)},${r.basePay.toFixed(2)},${r.extraTotal.toFixed(2)},${r.pay.toFixed(2)}\n`;
   });
   const totalHours = results.reduce((s,r) => s + r.hours, 0);
   const totalExtra = results.reduce((s,r) => s + r.extraTotal, 0);
   const totalPay   = results.reduce((s,r) => s + r.pay, 0);
-  csv += `TOTAL,,,,,,,,,${totalHours.toFixed(2)},,,${totalExtra.toFixed(2)},${totalPay.toFixed(2)}\n`;
+  csv += `TOTAL,,,,,,,,,,${totalHours.toFixed(2)},,,${totalExtra.toFixed(2)},${totalPay.toFixed(2)}\n`;
 
   // ── Late / left early / absent detail ──
   const attIssues = lastSalaryResult.attIssues || [];
-  csv += '\nLATE, LEFT EARLY & ABSENT DETAIL\n';
+  csv += '\nLATE, LEFT EARLY, ABSENT & LEAVE DETAIL\n';
   if (attIssues.length) {
     csv += 'Employee,ID,Date,Status,Minutes,Expected Time\n';
     attIssues.forEach(i => {
-      const st = i.kind === 'late' ? 'Late' : i.kind === 'early' ? 'Left early' : 'Absent';
+      const st = i.kind === 'late' ? 'Late' : i.kind === 'early' ? 'Left early'
+        : i.kind === 'leave' ? `${LEAVE_TYPES[i.leaveType] || 'Leave'}${i.half ? ' (half day ' + (i.half === 'am' ? 'morning' : 'afternoon') + ')' : ''} - unpaid` : 'Absent';
       csv += `"${i.name||''}","${i.employeeId}","${i.dateKey}","${st}",${i.minutes||''},"${i.expected||''}"\n`;
     });
   } else {
@@ -3950,6 +4184,165 @@ async function saveEmpSchedules() {
   setTimeout(() => el.textContent = '', 3000);
 }
 
+// ═══════════════════════════════════════════════════════════
+// LEAVE TAB
+// ═══════════════════════════════════════════════════════════
+function startLeaveListener() {
+  if (unsubLeaves) unsubLeaves();
+  leaveFirstSnap = true;
+  unsubLeaves = db.collection('leaves').orderBy('createdAt', 'desc').limit(1000).onSnapshot(snap => {
+    leavesCache = snap.docs.map(d => ({ docId: d.id, ...d.data({ serverTimestamps: 'estimate' }) }));
+    leaveIdxCache = buildLeaveIndex(leavesCache);
+    const pending = leavesCache.filter(l => l.status === 'pending').length;
+    const badge = document.getElementById('leave-tab-count');
+    badge.textContent = pending; badge.style.display = pending ? 'inline-block' : 'none';
+    if (!leaveFirstSnap) {
+      snap.docChanges().forEach(ch => {
+        const l = ch.doc.data();
+        if (ch.type === 'added' && l.status === 'pending' && l.source === 'staff') toast(`📝 New leave request from ${l.name}`, 'info');
+      });
+    }
+    leaveFirstSnap = false;
+    if (document.getElementById('page-leave').classList.contains('active')) renderLeaveList();
+    // Status everywhere depends on leave, so redraw what is on screen
+    logsCache = annotateStatus(logsCache);
+    refreshDashStats(); renderDashStatus(); renderDashRecent();
+  }, e => {
+    console.error('Leave sync failed:', e);
+    const el = document.getElementById('leave-list');
+    if (el) el.innerHTML = `<div style="color:var(--rl);font-size:13px;padding:20px;text-align:center">Could not load leave (${escHtml(e.code || '')}): ${escHtml(e.message)}<br>Check that your Firestore rules allow the <b>leaves</b> collection.</div>`;
+  });
+}
+
+function initLeavePage() {
+  const empSel = document.getElementById('leave-emp-filter');
+  const cur = empSel.value;
+  empSel.innerHTML = '<option value="">All Employees</option>' + staff.map(s => `<option value="${escHtml(s.id)}" ${s.id===cur?'selected':''}>${escHtml(s.name)} (${escHtml(s.id)})</option>`).join('');
+  const alEmp = document.getElementById('al-emp');
+  const alCur = alEmp.value;
+  alEmp.innerHTML = '<option value="">Choose employee…</option>' + staff.map(s => `<option value="${escHtml(s.id)}" ${s.id===alCur?'selected':''}>${escHtml(s.name)} (${escHtml(s.id)})</option>`).join('');
+  const from = document.getElementById('al-from');
+  if (!from.value) { from.value = todayKeyPP(); document.getElementById('al-to').value = from.value; }
+  syncAdminLeaveDates();
+  renderLeaveList();
+}
+
+function syncAdminLeaveDates() {
+  const half = document.getElementById('al-duration').value !== 'full';
+  document.getElementById('al-to-wrap').style.display = half ? 'none' : '';
+  const from = document.getElementById('al-from').value, to = document.getElementById('al-to');
+  if (half || !to.value || to.value < from) to.value = from;
+}
+
+function leaveItemHtml(l) {
+  const created = l.createdAt?.toDate ? fmtDatetime(l.createdAt.toDate()) : '';
+  const decided = l.decidedAt?.toDate ? fmtDatetime(l.decidedAt.toDate()) : '';
+  const id = escHtml(l.docId);
+  const actions = [];
+  if (l.status !== 'approved') actions.push(`<button class="btn btn-purple btn-sm" onclick="decideLeave('${id}','approved')">✓ Approve</button>`);
+  if (l.status !== 'rejected') actions.push(`<button class="btn btn-ghost btn-sm" onclick="decideLeave('${id}','rejected')">${l.status === 'approved' ? '✕ Cancel leave' : '✕ Reject'}</button>`);
+  actions.push(`<button class="btn btn-ghost btn-sm" title="Delete" onclick="deleteLeave('${id}')">🗑</button>`);
+  const statusLabel = { pending: 'Waiting', approved: 'Approved', rejected: l.decidedAfterApproval ? 'Cancelled' : 'Rejected' }[l.status] || l.status;
+  return `<div class="leave-item ${escHtml(l.status)}">
+    <div class="av">${initials(l.name)}</div>
+    <div class="log-meta" style="flex:1;min-width:0">
+      <div class="log-name">${escHtml(l.name || l.employeeId)} <span class="badge ${escHtml(l.status)}">${statusLabel}</span></div>
+      <div class="log-info">${LEAVE_ICONS[l.type] || '📝'} ${escHtml(LEAVE_TYPES[l.type] || l.type)} · ${escHtml(LEAVE_DURATIONS[l.duration] || '')} · <b>${fmtLeaveRange(l)}</b> (${fmtDays(l.days || 0)}, unpaid)</div>
+      ${l.reason ? `<div class="leave-reason">“${escHtml(l.reason)}”</div>` : ''}
+      <div class="leave-note">${l.source === 'admin' ? 'Recorded by admin' : 'Requested'}${created ? ' ' + created : ''}${decided && l.source !== 'admin' ? ` · ${l.status === 'approved' ? 'approved' : 'decided'} ${decided}` : ''}${l.adminNote ? ` · Note: ${escHtml(l.adminNote)}` : ''}</div>
+    </div>
+    <div class="leave-actions">${actions.join('')}</div>
+  </div>`;
+}
+
+function renderLeaveList() {
+  const el = document.getElementById('leave-list');
+  if (!el) return;
+  const st = document.getElementById('leave-status-filter').value;
+  const emp = document.getElementById('leave-emp-filter').value;
+  const month = document.getElementById('leave-month-filter').value;
+  let list = leavesCache;
+  if (st) list = list.filter(l => l.status === st);
+  if (emp) list = list.filter(l => l.employeeId === emp);
+  if (month) list = list.filter(l => l.from <= `${month}-31` && l.to >= `${month}-01`);
+  if (st === 'pending') list = [...list].sort((a,b) => (a.from||'').localeCompare(b.from||''));
+  el.innerHTML = list.length ? list.map(leaveItemHtml).join('')
+    : `<div style="color:var(--muted);font-size:13px;padding:20px;text-align:center">${st === 'pending' ? 'No requests waiting for approval 🎉' : 'No leave found'}</div>`;
+
+  // Tiles
+  const tk = todayKeyPP(), mo = tk.slice(0,7), cfg = readScheduleCache();
+  document.getElementById('lv-pending').textContent = leavesCache.filter(l => l.status === 'pending').length;
+  document.getElementById('lv-today').textContent = new Set(Object.keys(leaveIdxCache).filter(k => k.endsWith('|' + tk)).map(k => k.split('|')[0])).size;
+  let monthDays = 0;
+  Object.entries(leaveIdxCache).forEach(([k, l]) => {
+    const d = k.split('|')[1];
+    if (d.startsWith(mo) && cfg.workDays.includes(weekdayOfKey(d))) monthDays += l.duration === 'full' ? 1 : 0.5;
+  });
+  document.getElementById('lv-month').textContent = monthDays;
+  document.getElementById('lv-upcoming').textContent = leavesCache.filter(l => l.status === 'approved' && l.from > tk).length;
+}
+
+function overlapsApproved(l) {
+  return leavesCache.find(o => o.docId !== l.docId && o.employeeId === l.employeeId && o.status === 'approved' && o.from <= l.to && o.to >= l.from);
+}
+
+async function decideLeave(docId, status) {
+  const l = leavesCache.find(x => x.docId === docId);
+  if (!l) return;
+  let note = '';
+  if (status === 'approved') {
+    const clash = overlapsApproved(l);
+    if (clash && !confirm(`${l.name} already has approved leave on ${fmtLeaveRange(clash)}. Approve this one too?`)) return;
+  } else {
+    const ask = l.status === 'approved' ? `Cancel ${l.name}'s approved leave (${fmtLeaveRange(l)})? Those days will count as absent if they don't check in.\n\nReason (optional):`
+                                         : `Reject ${l.name}'s leave request (${fmtLeaveRange(l)})?\n\nReason (optional):`;
+    const r = prompt(ask, '');
+    if (r === null) return;
+    note = r.trim().slice(0, 200);
+  }
+  try {
+    const upd = { status, decidedAt: firebase.firestore.FieldValue.serverTimestamp(), adminNote: note || firebase.firestore.FieldValue.delete() };
+    if (status === 'rejected' && l.status === 'approved') upd.decidedAfterApproval = true;
+    if (status === 'approved') upd.decidedAfterApproval = firebase.firestore.FieldValue.delete();
+    await db.collection('leaves').doc(docId).update(upd);
+    toast(status === 'approved' ? `Leave approved for ${l.name}` : `Leave ${l.status === 'approved' ? 'cancelled' : 'rejected'} for ${l.name}`, 'success');
+    notifyLeave(status === 'approved' ? 'approved' : (l.status === 'approved' ? 'cancelled' : 'rejected'), l, note);
+  } catch(e) { toast('Save failed: ' + e.message, 'error'); }
+}
+
+async function deleteLeave(docId) {
+  const l = leavesCache.find(x => x.docId === docId);
+  if (!l || !confirm(`Delete this leave record for ${l.name} (${fmtLeaveRange(l)})? This can't be undone.`)) return;
+  try { await db.collection('leaves').doc(docId).delete(); toast('Leave deleted', 'info'); }
+  catch(e) { toast('Delete failed: ' + e.message, 'error'); }
+}
+
+async function addLeaveByAdmin() {
+  const empId = document.getElementById('al-emp').value;
+  const s = staff.find(x => x.id === empId);
+  if (!s) { toast('Choose an employee', 'error'); return; }
+  const type = document.getElementById('al-type').value;
+  const duration = document.getElementById('al-duration').value;
+  const from = document.getElementById('al-from').value;
+  const to = duration === 'full' ? document.getElementById('al-to').value : from;
+  if (!from || !to || to < from) { toast('Check the dates', 'error'); return; }
+  const days = leaveDayCount(from, to, duration);
+  if (!days) { toast('Those dates are not working days', 'error'); return; }
+  const leave = { employeeId: s.id, name: s.name, dept: s.dept || '', type, duration, from, to, days,
+    reason: document.getElementById('al-reason').value.trim().slice(0, 300), status: 'approved', source: 'admin' };
+  const clash = overlapsApproved(leave);
+  if (clash && !confirm(`${s.name} already has approved leave on ${fmtLeaveRange(clash)}. Save anyway?`)) return;
+  try {
+    await db.collection('leaves').add({ ...leave, createdAt: firebase.firestore.FieldValue.serverTimestamp(), decidedAt: firebase.firestore.FieldValue.serverTimestamp() });
+    toast(`Leave saved for ${s.name}`, 'success');
+    document.getElementById('al-reason').value = '';
+    notifyLeave('recorded', leave);
+  } catch(e) { toast('Save failed: ' + e.message, 'error'); }
+}
+
+window.renderLeaveList = renderLeaveList; window.decideLeave = decideLeave; window.deleteLeave = deleteLeave;
+window.addLeaveByAdmin = addLeaveByAdmin; window.syncAdminLeaveDates = syncAdminLeaveDates;
+
 window.doAdminLogin = doAdminLogin; window.adminLogout = adminLogout; window.changeAdminPassword = changeAdminPassword;
 window.saveTelegramSettings = saveTelegramSettings; window.testTelegramNotification = testTelegramNotification;
 window.loadTelegramSettings = loadTelegramSettings;
@@ -4239,6 +4632,103 @@ function resetEmp() {
   renderList(allStaff);
   goTo('select');
 }
+
+// ═══ LEAVE REQUEST (staff) ═══
+let leaveType = 'sick', leaveDuration = 'full';
+function openLeave() {
+  if (!selectedPerson) { toast('Tap your name first', 'error'); return; }
+  document.getElementById('lv-who').textContent = `${selectedPerson.name} · ${selectedPerson.id}`;
+  const tk = todayKeyPP();
+  document.getElementById('lv-from').value = tk;
+  document.getElementById('lv-to').value = tk;
+  document.getElementById('lv-reason').value = '';
+  setLeaveType('sick'); setLeaveDuration('full');
+  goTo('leave');
+  window.scrollTo(0, 0);
+  loadMyLeaves();
+}
+function setChip(rowId, v) {
+  document.querySelectorAll(`#${rowId} .chip`).forEach(b => b.classList.toggle('sel', b.dataset.v === v));
+}
+function setLeaveType(v) { leaveType = v; setChip('lv-type-row', v); updateLeaveSummary(); }
+function setLeaveDuration(v) {
+  leaveDuration = v; setChip('lv-dur-row', v);
+  const half = v !== 'full';
+  document.getElementById('lv-to-wrap').style.display = half ? 'none' : '';
+  document.getElementById('lv-dates').classList.toggle('single', half);
+  document.getElementById('lv-from-label').textContent = half ? 'Date' : 'From';
+  updateLeaveSummary();
+}
+function readLeaveForm() {
+  const from = document.getElementById('lv-from').value;
+  let to = leaveDuration === 'full' ? document.getElementById('lv-to').value : from;
+  return { from, to, reason: document.getElementById('lv-reason').value.trim() };
+}
+function updateLeaveSummary() {
+  const el = document.getElementById('lv-summary');
+  const f = readLeaveForm();
+  if (!f.from || !f.to) { el.textContent = 'Pick the date'; return; }
+  if (f.to < f.from) { el.innerHTML = '⚠️ "To" date is before "From" date'; return; }
+  const days = leaveDayCount(f.from, f.to, leaveDuration);
+  const range = fmtLeaveRange(f);
+  el.innerHTML = days
+    ? `${LEAVE_ICONS[leaveType]} <b>${LEAVE_TYPES[leaveType]}</b> · ${range} · <b>${fmtDays(days)}</b><br><span style="font-size:12px;color:var(--muted)">Leave is unpaid. Your manager will approve or reject it.</span>`
+    : '⚠️ Those dates are not working days';
+}
+async function loadMyLeaves() {
+  const el = document.getElementById('lv-mine');
+  el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:10px;text-align:center"><span class="spinner"></span>Loading...</div>';
+  try {
+    const snap = await db.collection('leaves').where('employeeId', '==', selectedPerson.id).get();
+    const list = snap.docs.map(d => d.data({ serverTimestamps: 'estimate' }))
+      .sort((a,b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0)).slice(0, 5);
+    const label = { pending: 'Waiting', approved: 'Approved', rejected: 'Not approved' };
+    el.innerHTML = list.length ? list.map(l => `<div class="my-leave">
+        <div><div>${LEAVE_ICONS[l.type] || '📝'} ${escHtml(LEAVE_TYPES[l.type] || l.type)} · ${fmtLeaveRange(l)}</div>
+        <div class="ml-sub">${escHtml(LEAVE_DURATIONS[l.duration] || '')} · ${fmtDays(l.days || 0)}${l.adminNote ? ' · ' + escHtml(l.adminNote) : ''}</div></div>
+        <span class="badge ${escHtml(l.status)}">${label[l.status] || escHtml(l.status)}</span>
+      </div>`).join('')
+      : '<div style="color:var(--muted);font-size:13px;padding:10px;text-align:center">No requests yet</div>';
+  } catch(e) {
+    el.innerHTML = `<div style="color:var(--rl);font-size:13px;padding:10px;text-align:center">Could not load: ${escHtml(e.message)}</div>`;
+  }
+}
+async function submitLeave() {
+  if (!db || !selectedPerson) return;
+  const f = readLeaveForm();
+  if (!f.from || !f.to) { toast('Pick the date', 'error'); return; }
+  if (f.to < f.from) { toast('"To" date is before "From" date', 'error'); return; }
+  if (dateKeysBetween(f.from, f.to).length > 60) { toast('Leave can be at most 60 days', 'error'); return; }
+  const days = leaveDayCount(f.from, f.to, leaveDuration);
+  if (!days) { toast('Those dates are not working days', 'error'); return; }
+  if (f.reason.length < 3) { toast('Please write a reason', 'error'); document.getElementById('lv-reason').focus(); return; }
+  const btn = document.getElementById('btn-leave-submit');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Sending...';
+  const leave = {
+    employeeId: selectedPerson.id, name: selectedPerson.name, dept: selectedPerson.dept || '',
+    type: leaveType, duration: leaveDuration, from: f.from, to: f.to, days,
+    reason: f.reason.slice(0, 300), status: 'pending', source: 'staff',
+  };
+  try {
+    await db.collection('leaves').add({ ...leave, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    notifyLeave('requested', leave); // fire-and-forget
+    document.getElementById('sc-ring').className = 'success-ring in';
+    document.getElementById('sc-ring').textContent = '📝';
+    document.getElementById('sc-title').textContent = 'Request Sent!';
+    document.getElementById('sc-title').className = 'sc-title in';
+    document.getElementById('sc-name').textContent = leave.name;
+    document.getElementById('sc-meta').textContent = `${LEAVE_TYPES[leave.type]} · ${fmtDays(days)}`;
+    document.getElementById('sc-time').textContent = '📅 ' + fmtLeaveRange(leave) + ' · waiting for approval';
+    goTo('success');
+    startAutoReturn(4);
+  } catch(e) {
+    document.getElementById('err-msg').textContent = 'Could not send leave request: ' + e.message;
+    goTo('error');
+  }
+  btn.disabled = false; btn.innerHTML = 'Send Request →';
+}
+window.openLeave = openLeave; window.setLeaveType = setLeaveType; window.setLeaveDuration = setLeaveDuration;
+window.updateLeaveSummary = updateLeaveSummary; window.submitLeave = submitLeave; window.goTo = goTo;
 
 window.saveEmpConfig = saveEmpConfig; window.pick = pick; window.filterList = filterList;
 window.setType = setType; window.openCamera = openCamera; window.flipCam = flipCam;
