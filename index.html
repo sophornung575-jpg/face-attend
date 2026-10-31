@@ -505,24 +505,24 @@ input,select{font-family:inherit;-webkit-appearance:none}
     <div class="page-title">Leave Requests</div>
     <div class="page-sub">Staff ask for leave from the check-in page. Leave is unpaid — approved days show as "Leave" instead of "Absent" in Logs and Salary.</div>
     <div class="grid4" style="margin-bottom:16px">
-      <div class="stat-tile"><div class="stat-val" id="lv-pending" style="color:#b45309">—</div><div class="stat-lbl">Waiting for you</div></div>
+      <div class="stat-tile"><div class="stat-val" id="lv-pending" style="color:#b45309">—</div><div class="stat-lbl">Pending</div></div>
       <div class="stat-tile"><div class="stat-val" id="lv-today" style="color:#5b21b6">—</div><div class="stat-lbl">On leave today</div></div>
       <div class="stat-tile"><div class="stat-val" id="lv-month" style="color:var(--pl)">—</div><div class="stat-lbl">Leave days this month</div></div>
-      <div class="stat-tile"><div class="stat-val" id="lv-upcoming" style="color:var(--gl)">—</div><div class="stat-lbl">Upcoming (approved)</div></div>
+      <div class="stat-tile"><div class="stat-val" id="lv-upcoming" style="color:var(--gl)">—</div><div class="stat-lbl">Upcoming</div></div>
     </div>
     <div class="card">
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px">
         <div class="field" style="margin:0;min-width:130px;flex:1"><label>Status</label>
-          <select id="leave-status-filter" onchange="renderLeaveList()"><option value="pending">Waiting for approval</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="">All</option></select></div>
+          <select id="leave-status-filter" onchange="renderLeaveList()"><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="">All</option></select></div>
         <div class="field" style="margin:0;min-width:150px;flex:1"><label>Employee</label>
           <select id="leave-emp-filter" onchange="renderLeaveList()"><option value="">All Employees</option></select></div>
         <div class="field" style="margin:0;min-width:130px;flex:1"><label>Month</label><input type="month" id="leave-month-filter" onchange="renderLeaveList()"></div>
-        <button class="btn btn-ghost btn-sm" style="height:36px" onclick="document.getElementById('leave-month-filter').value='';renderLeaveList()">✕ Clear</button>
+        <button class="btn btn-ghost btn-sm" style="height:36px" onclick="document.getElementById('leave-month-filter').value='';renderLeaveList()">Clear</button>
       </div>
       <div class="log-scroll" id="leave-list" style="max-height:520px"><div style="color:var(--muted);font-size:13px;padding:20px;text-align:center"><span class="spinner"></span>Loading...</div></div>
     </div>
     <div class="card">
-      <div class="card-title">➕ Record leave for an employee</div>
+      <div class="card-title">Record leave for an employee</div>
       <div class="page-sub" style="margin-bottom:12px">For leave agreed in person. It is saved as approved.</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
         <div class="field" style="margin:0;min-width:160px;flex:2"><label>Employee</label><select id="al-emp"></select></div>
@@ -760,7 +760,7 @@ input,select{font-family:inherit;-webkit-appearance:none}
         <button class="type-btn sel-in" id="tb-in" onclick="setType('in')">✅ Check In</button>
         <button class="type-btn" id="tb-out" onclick="setType('out')">🚪 Check Out</button>
       </div>
-      <button class="btn-leave-open" onclick="openLeave()">📝 Request Leave</button>
+      <button class="btn-leave-open" onclick="openLeave()">Request leave</button>
     </div>
     <div class="bottom-bar">
       <button class="btn-continue" id="btn-continue" disabled onclick="openCamera()">Continue →</button>
@@ -779,27 +779,27 @@ input,select{font-family:inherit;-webkit-appearance:none}
     <div class="select-body">
       <div class="section-label">Type of leave</div>
       <div class="chip-row c3" id="lv-type-row">
-        <button class="chip sel" data-v="sick" onclick="setLeaveType('sick')">🤒<br>Sick</button>
-        <button class="chip" data-v="annual" onclick="setLeaveType('annual')">🏖️<br>Annual</button>
-        <button class="chip" data-v="personal" onclick="setLeaveType('personal')">👨‍👩‍👧<br>Personal</button>
+        <button class="chip sel" data-v="sick" onclick="setLeaveType('sick')">Sick</button>
+        <button class="chip" data-v="annual" onclick="setLeaveType('annual')">Annual</button>
+        <button class="chip" data-v="personal" onclick="setLeaveType('personal')">Personal</button>
       </div>
-      <div class="section-label">How long?</div>
+      <div class="section-label">Length</div>
       <div class="chip-row c3" id="lv-dur-row">
         <button class="chip sel" data-v="full" onclick="setLeaveDuration('full')">Full day</button>
-        <button class="chip" data-v="am" onclick="setLeaveDuration('am')">Half day<br>morning</button>
-        <button class="chip" data-v="pm" onclick="setLeaveDuration('pm')">Half day<br>afternoon</button>
+        <button class="chip" data-v="am" onclick="setLeaveDuration('am')">Morning</button>
+        <button class="chip" data-v="pm" onclick="setLeaveDuration('pm')">Afternoon</button>
       </div>
       <div class="leave-dates" id="lv-dates">
         <div class="field"><label id="lv-from-label">From</label><input type="date" id="lv-from" onchange="updateLeaveSummary()"></div>
         <div class="field" id="lv-to-wrap"><label>To</label><input type="date" id="lv-to" onchange="updateLeaveSummary()"></div>
       </div>
-      <div class="field"><label>Reason</label><textarea id="lv-reason" maxlength="300" placeholder="Tell your manager why (required)"></textarea></div>
+      <div class="field"><label>Reason</label><textarea id="lv-reason" maxlength="300" placeholder="Reason for leave (required)"></textarea></div>
       <div class="leave-summary" id="lv-summary">—</div>
       <div class="section-label">My recent requests</div>
       <div class="log-scroll" id="lv-mine"><div style="color:var(--muted);font-size:13px;padding:10px;text-align:center">—</div></div>
     </div>
     <div class="bottom-bar">
-      <button class="btn-continue" id="btn-leave-submit" onclick="submitLeave()">Send Request →</button>
+      <button class="btn-continue" id="btn-leave-submit" onclick="submitLeave()">Submit request</button>
     </div>
   </div>
 
@@ -4199,7 +4199,7 @@ function startLeaveListener() {
     if (!leaveFirstSnap) {
       snap.docChanges().forEach(ch => {
         const l = ch.doc.data();
-        if (ch.type === 'added' && l.status === 'pending' && l.source === 'staff') toast(`📝 New leave request from ${l.name}`, 'info');
+        if (ch.type === 'added' && l.status === 'pending' && l.source === 'staff') toast(`New leave request from ${l.name}`, 'info');
       });
     }
     leaveFirstSnap = false;
@@ -4239,16 +4239,16 @@ function leaveItemHtml(l) {
   const decided = l.decidedAt?.toDate ? fmtDatetime(l.decidedAt.toDate()) : '';
   const id = escHtml(l.docId);
   const actions = [];
-  if (l.status !== 'approved') actions.push(`<button class="btn btn-purple btn-sm" onclick="decideLeave('${id}','approved')">✓ Approve</button>`);
-  if (l.status !== 'rejected') actions.push(`<button class="btn btn-ghost btn-sm" onclick="decideLeave('${id}','rejected')">${l.status === 'approved' ? '✕ Cancel leave' : '✕ Reject'}</button>`);
-  actions.push(`<button class="btn btn-ghost btn-sm" title="Delete" onclick="deleteLeave('${id}')">🗑</button>`);
-  const statusLabel = { pending: 'Waiting', approved: 'Approved', rejected: l.decidedAfterApproval ? 'Cancelled' : 'Rejected' }[l.status] || l.status;
+  if (l.status !== 'approved') actions.push(`<button class="btn btn-purple btn-sm" onclick="decideLeave('${id}','approved')">Approve</button>`);
+  if (l.status !== 'rejected') actions.push(`<button class="btn btn-ghost btn-sm" onclick="decideLeave('${id}','rejected')">${l.status === 'approved' ? 'Cancel leave' : 'Reject'}</button>`);
+  actions.push(`<button class="btn btn-ghost btn-sm" onclick="deleteLeave('${id}')">Delete</button>`);
+  const statusLabel = { pending: 'Pending', approved: 'Approved', rejected: l.decidedAfterApproval ? 'Cancelled' : 'Rejected' }[l.status] || l.status;
   return `<div class="leave-item ${escHtml(l.status)}">
     <div class="av">${initials(l.name)}</div>
     <div class="log-meta" style="flex:1;min-width:0">
       <div class="log-name">${escHtml(l.name || l.employeeId)} <span class="badge ${escHtml(l.status)}">${statusLabel}</span></div>
-      <div class="log-info">${LEAVE_ICONS[l.type] || '📝'} ${escHtml(LEAVE_TYPES[l.type] || l.type)} · ${escHtml(LEAVE_DURATIONS[l.duration] || '')} · <b>${fmtLeaveRange(l)}</b> (${fmtDays(l.days || 0)}, unpaid)</div>
-      ${l.reason ? `<div class="leave-reason">“${escHtml(l.reason)}”</div>` : ''}
+      <div class="log-info">${escHtml(LEAVE_TYPES[l.type] || l.type)} · ${escHtml(LEAVE_DURATIONS[l.duration] || '')} · <b>${fmtLeaveRange(l)}</b> (${fmtDays(l.days || 0)}, unpaid)</div>
+      ${l.reason ? `<div class="leave-reason">Reason: ${escHtml(l.reason)}</div>` : ''}
       <div class="leave-note">${l.source === 'admin' ? 'Recorded by admin' : 'Requested'}${created ? ' ' + created : ''}${decided && l.source !== 'admin' ? ` · ${l.status === 'approved' ? 'approved' : 'decided'} ${decided}` : ''}${l.adminNote ? ` · Note: ${escHtml(l.adminNote)}` : ''}</div>
     </div>
     <div class="leave-actions">${actions.join('')}</div>
@@ -4267,7 +4267,7 @@ function renderLeaveList() {
   if (month) list = list.filter(l => l.from <= `${month}-31` && l.to >= `${month}-01`);
   if (st === 'pending') list = [...list].sort((a,b) => (a.from||'').localeCompare(b.from||''));
   el.innerHTML = list.length ? list.map(leaveItemHtml).join('')
-    : `<div style="color:var(--muted);font-size:13px;padding:20px;text-align:center">${st === 'pending' ? 'No requests waiting for approval 🎉' : 'No leave found'}</div>`;
+    : `<div style="color:var(--muted);font-size:13px;padding:20px;text-align:center">${st === 'pending' ? 'No pending requests' : 'No leave found'}</div>`;
 
   // Tiles
   const tk = todayKeyPP(), mo = tk.slice(0,7), cfg = readScheduleCache();
@@ -4668,12 +4668,12 @@ function updateLeaveSummary() {
   const el = document.getElementById('lv-summary');
   const f = readLeaveForm();
   if (!f.from || !f.to) { el.textContent = 'Pick the date'; return; }
-  if (f.to < f.from) { el.innerHTML = '⚠️ "To" date is before "From" date'; return; }
+  if (f.to < f.from) { el.innerHTML = '"To" date is before "From" date'; return; }
   const days = leaveDayCount(f.from, f.to, leaveDuration);
   const range = fmtLeaveRange(f);
   el.innerHTML = days
-    ? `${LEAVE_ICONS[leaveType]} <b>${LEAVE_TYPES[leaveType]}</b> · ${range} · <b>${fmtDays(days)}</b><br><span style="font-size:12px;color:var(--muted)">Leave is unpaid. Your manager will approve or reject it.</span>`
-    : '⚠️ Those dates are not working days';
+    ? `<b>${LEAVE_TYPES[leaveType]}</b> · ${range} · <b>${fmtDays(days)}</b><br><span style="font-size:12px;color:var(--muted)">Leave is unpaid and needs manager approval.</span>`
+    : 'Those dates are not working days';
 }
 async function loadMyLeaves() {
   const el = document.getElementById('lv-mine');
@@ -4682,9 +4682,9 @@ async function loadMyLeaves() {
     const snap = await db.collection('leaves').where('employeeId', '==', selectedPerson.id).get();
     const list = snap.docs.map(d => d.data({ serverTimestamps: 'estimate' }))
       .sort((a,b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0)).slice(0, 5);
-    const label = { pending: 'Waiting', approved: 'Approved', rejected: 'Not approved' };
+    const label = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' };
     el.innerHTML = list.length ? list.map(l => `<div class="my-leave">
-        <div><div>${LEAVE_ICONS[l.type] || '📝'} ${escHtml(LEAVE_TYPES[l.type] || l.type)} · ${fmtLeaveRange(l)}</div>
+        <div><div>${escHtml(LEAVE_TYPES[l.type] || l.type)} · ${fmtLeaveRange(l)}</div>
         <div class="ml-sub">${escHtml(LEAVE_DURATIONS[l.duration] || '')} · ${fmtDays(l.days || 0)}${l.adminNote ? ' · ' + escHtml(l.adminNote) : ''}</div></div>
         <span class="badge ${escHtml(l.status)}">${label[l.status] || escHtml(l.status)}</span>
       </div>`).join('')
@@ -4703,7 +4703,7 @@ async function submitLeave() {
   if (!days) { toast('Those dates are not working days', 'error'); return; }
   if (f.reason.length < 3) { toast('Please write a reason', 'error'); document.getElementById('lv-reason').focus(); return; }
   const btn = document.getElementById('btn-leave-submit');
-  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Sending...';
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Submitting...';
   const leave = {
     employeeId: selectedPerson.id, name: selectedPerson.name, dept: selectedPerson.dept || '',
     type: leaveType, duration: leaveDuration, from: f.from, to: f.to, days,
@@ -4713,19 +4713,19 @@ async function submitLeave() {
     await db.collection('leaves').add({ ...leave, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
     notifyLeave('requested', leave); // fire-and-forget
     document.getElementById('sc-ring').className = 'success-ring in';
-    document.getElementById('sc-ring').textContent = '📝';
-    document.getElementById('sc-title').textContent = 'Request Sent!';
+    document.getElementById('sc-ring').textContent = '✓';
+    document.getElementById('sc-title').textContent = 'Request Submitted';
     document.getElementById('sc-title').className = 'sc-title in';
     document.getElementById('sc-name').textContent = leave.name;
     document.getElementById('sc-meta').textContent = `${LEAVE_TYPES[leave.type]} · ${fmtDays(days)}`;
-    document.getElementById('sc-time').textContent = '📅 ' + fmtLeaveRange(leave) + ' · waiting for approval';
+    document.getElementById('sc-time').textContent = fmtLeaveRange(leave) + ' · Pending approval';
     goTo('success');
     startAutoReturn(4);
   } catch(e) {
     document.getElementById('err-msg').textContent = 'Could not send leave request: ' + e.message;
     goTo('error');
   }
-  btn.disabled = false; btn.innerHTML = 'Send Request →';
+  btn.disabled = false; btn.innerHTML = 'Submit request';
 }
 window.openLeave = openLeave; window.setLeaveType = setLeaveType; window.setLeaveDuration = setLeaveDuration;
 window.updateLeaveSummary = updateLeaveSummary; window.submitLeave = submitLeave; window.goTo = goTo;
