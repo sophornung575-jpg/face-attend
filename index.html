@@ -7,6 +7,8 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%B7%3C/text%3E%3C/svg%3E">
 
 <!-- Firebase v9 compat -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
@@ -229,6 +231,10 @@ input,select{font-family:inherit;-webkit-appearance:none}
 .leave-summary b{color:var(--text)}
 .my-leave{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;background:var(--surface);border-radius:10px;font-size:13px}
 .my-leave .ml-sub{font-size:11px;color:var(--muted);margin-top:2px}
+html[lang=km] body{font-family:'Kantumruy Pro','Segoe UI',system-ui,sans-serif}
+html[lang=km] .section-label,html[lang=km] .cal-wd{text-transform:none;letter-spacing:0}
+.lang-btn{margin-left:auto;padding:7px 12px;border-radius:99px;border:1.5px solid var(--border2);background:var(--bg);color:var(--pl);font-size:13px;font-weight:700}
+.lang-btn:active{border-color:var(--purple)}
 .cal{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px;margin-bottom:12px}
 .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .cal-title{font-size:15px;font-weight:700;color:var(--text)}
@@ -775,26 +781,27 @@ input,select{font-family:inherit;-webkit-appearance:none}
           <div class="brand-name">FaceAttend</div>
           <div class="brand-sub" id="greeting">Good morning</div>
         </div>
+        <button class="lang-btn" id="lang-btn" onclick="toggleLang()">ខ្មែរ</button>
       </div>
-      <div class="section-label" style="margin-bottom:8px">Who are you?</div>
+      <div class="section-label" style="margin-bottom:8px" data-i18n="who">Who are you?</div>
       <div class="search-wrap">
         <span class="si">🔍</span>
-        <input type="text" placeholder="Search your name..." id="search-inp" oninput="filterList()">
+        <input type="text" placeholder="Search your name..." data-i18n-ph="search" id="search-inp" oninput="filterList()">
       </div>
     </div>
     <div class="select-body">
       <div class="staff-list" id="staff-list">
-        <div style="color:var(--muted);font-size:13px;padding:20px;text-align:center"><span class="spinner"></span>Loading staff...</div>
+        <div style="color:var(--muted);font-size:13px;padding:20px;text-align:center"><span class="spinner"></span><span data-i18n="loadingStaff">Loading staff...</span></div>
       </div>
-      <div class="section-label">Check-in type</div>
+      <div class="section-label" data-i18n="ciType">Check-in type</div>
       <div class="type-row">
-        <button class="type-btn sel-in" id="tb-in" onclick="setType('in')">✅ Check In</button>
-        <button class="type-btn" id="tb-out" onclick="setType('out')">🚪 Check Out</button>
+        <button class="type-btn sel-in" id="tb-in" onclick="setType('in')" data-i18n="checkIn">✅ Check In</button>
+        <button class="type-btn" id="tb-out" onclick="setType('out')" data-i18n="checkOut">🚪 Check Out</button>
       </div>
-      <button class="btn-leave-open" onclick="openLeave()">Request leave</button>
+      <button class="btn-leave-open" onclick="openLeave()" data-i18n="reqLeave">Request leave</button>
     </div>
     <div class="bottom-bar">
-      <button class="btn-continue" id="btn-continue" disabled onclick="openCamera()">Continue →</button>
+      <button class="btn-continue" id="btn-continue" disabled onclick="openCamera()" data-i18n="continue">Continue →</button>
     </div>
   </div>
 
@@ -803,7 +810,7 @@ input,select{font-family:inherit;-webkit-appearance:none}
     <div class="leave-head">
       <button class="leave-back" onclick="goTo('select')">←</button>
       <div>
-        <div class="lh-title">Request Leave</div>
+        <div class="lh-title" data-i18n="reqLeaveTitle">Request Leave</div>
         <div class="lh-sub" id="lv-who">—</div>
       </div>
     </div>
@@ -817,7 +824,7 @@ input,select{font-family:inherit;-webkit-appearance:none}
         <div class="cal-grid" id="cal-grid"></div>
       </div>
       <div class="cal-hint" id="cal-hint">Tap the <b>first day</b> of your leave</div>
-      <div class="section-label">My recent requests</div>
+      <div class="section-label" data-i18n="myReqs">My recent requests</div>
       <div class="log-scroll" id="lv-mine"><div style="color:var(--muted);font-size:13px;padding:10px;text-align:center">—</div></div>
     </div>
 
@@ -825,24 +832,24 @@ input,select{font-family:inherit;-webkit-appearance:none}
     <div class="sheet-bg" id="lv-sheet" onclick="if(event.target===this)closeLeaveSheet()">
       <div class="sheet">
         <div class="sheet-grip"></div>
-        <div class="sheet-title">Reason for leave</div>
+        <div class="sheet-title" data-i18n="reasonTitle">Reason for leave</div>
         <div class="sheet-sub" id="lv-sheet-dates">—</div>
         <div class="reason-list" id="lv-reason-list">
-          <button class="reason-opt" data-v="sick" onclick="setLeaveType('sick')"><span class="ro-dot"></span>Sick</button>
-          <button class="reason-opt" data-v="annual" onclick="setLeaveType('annual')"><span class="ro-dot"></span>Annual leave</button>
-          <button class="reason-opt" data-v="personal" onclick="setLeaveType('personal')"><span class="ro-dot"></span>Personal / family</button>
+          <button class="reason-opt" data-v="sick" onclick="setLeaveType('sick')"><span class="ro-dot"></span><span data-i18n="lt_sick">Sick</span></button>
+          <button class="reason-opt" data-v="annual" onclick="setLeaveType('annual')"><span class="ro-dot"></span><span data-i18n="lt_annual">Annual leave</span></button>
+          <button class="reason-opt" data-v="personal" onclick="setLeaveType('personal')"><span class="ro-dot"></span><span data-i18n="lt_personal">Personal / family</span></button>
         </div>
         <div id="lv-dur-wrap">
-          <div class="section-label">Length</div>
+          <div class="section-label" data-i18n="length">Length</div>
           <div class="chip-row c3" id="lv-dur-row">
-            <button class="chip sel" data-v="full" onclick="setLeaveDuration('full')">Full day</button>
-            <button class="chip" data-v="am" onclick="setLeaveDuration('am')">Morning</button>
-            <button class="chip" data-v="pm" onclick="setLeaveDuration('pm')">Afternoon</button>
+            <button class="chip sel" data-v="full" onclick="setLeaveDuration('full')" data-i18n="d_full">Full day</button>
+            <button class="chip" data-v="am" onclick="setLeaveDuration('am')" data-i18n="d_am">Morning</button>
+            <button class="chip" data-v="pm" onclick="setLeaveDuration('pm')" data-i18n="d_pm">Afternoon</button>
           </div>
         </div>
         <div class="sheet-actions">
-          <button class="btn-retake" onclick="closeLeaveSheet()">Cancel</button>
-          <button class="btn-continue" id="btn-leave-submit" disabled onclick="submitLeave()">Submit</button>
+          <button class="btn-retake" onclick="closeLeaveSheet()" data-i18n="cancel">Cancel</button>
+          <button class="btn-continue" id="btn-leave-submit" disabled onclick="submitLeave()" data-i18n="submit">Submit</button>
         </div>
       </div>
     </div>
@@ -861,7 +868,7 @@ input,select{font-family:inherit;-webkit-appearance:none}
     </div>
     <div class="cam-guide">
       <div class="oval"></div>
-      <div class="oval-hint">Position your face in the oval</div>
+      <div class="oval-hint" data-i18n="oval">Position your face in the oval</div>
     </div>
     <div class="cam-bottom">
       <div style="width:46px"></div>
@@ -885,8 +892,8 @@ input,select{font-family:inherit;-webkit-appearance:none}
       </div>
 
       <div class="prev-actions">
-        <button class="btn-retake" onclick="retake()">↩ Retake</button>
-        <button class="btn-confirm" id="btn-confirm" onclick="submitCheckin()">✓ Confirm</button>
+        <button class="btn-retake" onclick="retake()" data-i18n="retake">↩ Retake</button>
+        <button class="btn-confirm" id="btn-confirm" onclick="submitCheckin()" data-i18n="confirm">✓ Confirm</button>
       </div>
     </div>
   </div>
@@ -904,9 +911,9 @@ input,select{font-family:inherit;-webkit-appearance:none}
   <!-- Error -->
   <div class="screen" id="screen-error">
     <div class="err-icon">⚠️</div>
-    <div class="err-title">Something went wrong</div>
+    <div class="err-title" data-i18n="errTitle">Something went wrong</div>
     <div class="err-msg" id="err-msg">Please try again</div>
-    <button class="btn-retry" onclick="resetEmp()">← Try Again</button>
+    <button class="btn-retry" onclick="resetEmp()" data-i18n="tryAgain">← Try Again</button>
   </div>
 
 </div>
@@ -2704,6 +2711,11 @@ async function syncSchedules() {
 // device or browser timezone does the calculation.
 // ═══════════════════════════════════════════════════════════
 const TZ = 'Asia/Phnom_Penh';
+var UI_LANG = 'en'; // only the staff page switches this; admin and Telegram stay English
+const KM_MONTHS = ['មករា','កុម្ភៈ','មីនា','មេសា','ឧសភា','មិថុនា','កក្កដា','សីហា','កញ្ញា','តុលា','វិច្ឆិកា','ធ្នូ'];
+const KM_WEEKDAYS = ['អាទិត្យ','ច័ន្ទ','អង្គារ','ពុធ','ព្រហស្បតិ៍','សុក្រ','សៅរ៍'];
+function khNum(v) { return String(v).replace(/[0-9]/g, d => '០១២៣៤៥៦៧៨៩'[d]); }
+function numL(v, lang) { return (lang || UI_LANG) === 'km' ? khNum(v) : String(v); }
 const DEFAULT_WORK_DAYS = [0,1,2,3,4,5,6]; // every day (0 = Sunday)
 const WEEKDAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const _ppFmt = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', hourCycle:'h23', weekday:'short' });
@@ -2713,7 +2725,10 @@ function ppParts(d) {
   return { dateKey: `${o.year}-${o.month}-${o.day}`, minutes: (+o.hour) * 60 + (+o.minute), weekday: WEEKDAY_NAMES.indexOf(o.weekday) };
 }
 function hhmmToMin(t) { const [h,m] = String(t||'').split(':').map(Number); return (isNaN(h)||isNaN(m)) ? null : h*60+m; }
-function fmtDateKey(k) { const [y,m,d] = k.split('-').map(Number); return new Date(Date.UTC(y,m-1,d,12)).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',timeZone:'UTC'}); }
+function fmtDateKey(k, lang) {
+  const [y,m,d] = k.split('-').map(Number);
+  if ((lang || UI_LANG) === 'km') return `ថ្ងៃ${KM_WEEKDAYS[new Date(Date.UTC(y,m-1,d)).getUTCDay()]} ${khNum(d)} ${KM_MONTHS[m-1]}`;
+  return new Date(Date.UTC(y,m-1,d,12)).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',timeZone:'UTC'}); }
 function fmtMins(n) { if (n < 60) return `${n} min`; const h = Math.floor(n/60), m = n%60; return m ? `${h}h ${m}m` : `${h}h`; }
 
 function readScheduleCache() {
@@ -2867,9 +2882,9 @@ function leaveDayCount(fromKey, toKey, duration, cfg) {
   const n = dateKeysBetween(fromKey, toKey).filter(k => cfg.workDays.includes(weekdayOfKey(k))).length;
   return duration === 'full' ? n : n * 0.5;
 }
-function fmtDays(n) { return `${n} day${n === 1 ? '' : 's'}`; }
-function fmtLeaveRange(l) {
-  return l.from === l.to ? fmtDateKey(l.from) : `${fmtDateKey(l.from)} – ${fmtDateKey(l.to)}`;
+function fmtDays(n, lang) { return (lang || UI_LANG) === 'km' ? `${khNum(n)} ថ្ងៃ` : `${n} day${n === 1 ? '' : 's'}`; }
+function fmtLeaveRange(l, lang) {
+  return l.from === l.to ? fmtDateKey(l.from, lang) : `${fmtDateKey(l.from, lang)} – ${fmtDateKey(l.to, lang)}`;
 }
 // Approved leave, indexed by employee and day
 function buildLeaveIndex(leaves) {
@@ -2892,7 +2907,7 @@ async function notifyLeave(event, leave, adminNote) {
         name: leave.name, employeeId: leave.employeeId, dept: leave.dept || '',
         leaveType: LEAVE_TYPES[leave.type] || leave.type, leaveIcon: LEAVE_ICONS[leave.type] || '📝',
         duration: LEAVE_DURATIONS[leave.duration] || leave.duration,
-        dates: fmtLeaveRange(leave), days: leave.days, reason: leave.reason || '', note: adminNote || '',
+        dates: fmtLeaveRange(leave, 'en'), days: leave.days, reason: leave.reason || '', note: adminNote || '',
       }),
     });
     const data = await res.json().catch(() => ({}));
@@ -4404,6 +4419,102 @@ window.clearLogDateFilter = clearLogDateFilter;
 // ═══════════════════════════════════════════════════════════
 if (IS_CHECKIN) {
 
+// ═══ LANGUAGE (staff page) — Khmer by default, English on request ═══
+const I18N = {
+  en: {
+    who: 'Who are you?', search: 'Search your name...', loadingStaff: 'Loading staff...',
+    noStaff: 'No staff found. Ask admin to register employees.', errStaff: 'Error loading staff: ',
+    ciType: 'Check-in type', checkIn: '✅ Check In', checkOut: '🚪 Check Out', reqLeave: 'Request leave', continue: 'Continue →',
+    checkingIn: '✅ Checking In', checkingOut: '🚪 Checking Out', oval: 'Position your face in the oval',
+    badgeIn: '✅ Check-In', badgeOut: '🚪 Check-Out',
+    showLoc: '📍 Show My Location', hideLoc: '📍 Hide Location', gettingLoc: 'Getting your location...',
+    noLoc: '⚠️ Location unavailable — check your device permissions. You can still check in without it.',
+    accurate: '📍 Accurate to ±{n}m', noMap: 'Map library unavailable, but your location was captured.',
+    retake: '↩ Retake', confirm: '✓ Confirm', saving: 'Saving...',
+    checkedIn: 'Checked In!', checkedOut: 'Checked Out!', returning: 'Returning to start in {n}...',
+    errTitle: 'Something went wrong', tryAgain: '← Try Again',
+    camDenied: 'Camera access denied. Please allow camera and try again.', saveFailed: 'Save failed: ',
+    fbError: 'Firebase connection error',
+    morning: 'Good morning', afternoon: 'Good afternoon', evening: 'Good evening',
+    reqLeaveTitle: 'Request Leave', myReqs: 'My recent requests', noReqs: 'No requests yet', loading: 'Loading...', couldNotLoad: 'Could not load: ',
+    hintStart: 'Tap the <b>first day</b> of your leave',
+    hintEnd: 'From <b>{d}</b> — now tap the <b>last day</b> (tap the same day again for one day)',
+    reasonTitle: 'Reason for leave', lt_sick: 'Sick', lt_annual: 'Annual leave', lt_personal: 'Personal / family',
+    lt_full_sick: 'Sick leave', lt_full_annual: 'Annual leave', lt_full_personal: 'Personal / family',
+    length: 'Length', d_full: 'Full day', d_am: 'Morning', d_pm: 'Afternoon',
+    dur_full: 'Full day', dur_am: 'Half day (morning)', dur_pm: 'Half day (afternoon)',
+    cancel: 'Cancel', submit: 'Submit', submitting: 'Submitting...', unpaid: 'unpaid',
+    st_pending: 'Pending', st_approved: 'Approved', st_rejected: 'Rejected',
+    submitted: 'Request Submitted', pendingApproval: 'Pending approval',
+    tapName: 'Tap your name first', max60: 'Leave can be at most 60 days', notWorkdays: 'Those dates are not working days',
+    chooseReason: 'Choose a reason', clash: 'You already have leave on {d}. Submit anyway?',
+    leaveBlocked: 'Leave requests are blocked by the database rules. Please tell your admin to allow the "leaves" collection in Firestore rules.',
+    leaveFailed: 'Could not send leave request: ',
+    weekdays: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
+    months: ['January','February','March','April','May','June','July','August','September','October','November','December'],
+    langBtn: 'ខ្មែរ',
+  },
+  km: {
+    who: 'ជ្រើសរើសឈ្មោះរបស់អ្នក', search: 'ស្វែងរកឈ្មោះរបស់អ្នក...', loadingStaff: 'កំពុងផ្ទុកបញ្ជីបុគ្គលិក...',
+    noStaff: 'រកមិនឃើញបុគ្គលិក។ សូមប្រាប់អ្នកគ្រប់គ្រងឱ្យចុះឈ្មោះបុគ្គលិក។', errStaff: 'មិនអាចផ្ទុកបញ្ជីបុគ្គលិកបានទេ៖ ',
+    ciType: 'ជ្រើសរើសសកម្មភាព', checkIn: '✅ ចូលធ្វើការ', checkOut: '🚪 ចេញពីការងារ', reqLeave: 'ស្នើសុំច្បាប់', continue: 'បន្ត →',
+    checkingIn: '✅ ចូលធ្វើការ', checkingOut: '🚪 ចេញពីការងារ', oval: 'សូមដាក់មុខរបស់អ្នកនៅក្នុងរង្វង់',
+    badgeIn: '✅ ចូលធ្វើការ', badgeOut: '🚪 ចេញពីការងារ',
+    showLoc: '📍 បង្ហាញទីតាំងរបស់ខ្ញុំ', hideLoc: '📍 លាក់ទីតាំង', gettingLoc: 'កំពុងស្វែងរកទីតាំងរបស់អ្នក...',
+    noLoc: '⚠️ មិនអាចរកទីតាំងបានទេ — សូមពិនិត្យការអនុញ្ញាតលើទូរស័ព្ទ។ អ្នកនៅតែអាចចុះវត្តមានបាន។',
+    accurate: '📍 ភាពត្រឹមត្រូវ ±{n} ម៉ែត្រ', noMap: 'មិនអាចបង្ហាញផែនទីបានទេ ប៉ុន្តែទីតាំងរបស់អ្នកត្រូវបានកត់ត្រាហើយ។',
+    retake: '↩ ថតម្តងទៀត', confirm: '✓ បញ្ជាក់', saving: 'កំពុងរក្សាទុក...',
+    checkedIn: 'បានចូលធ្វើការ!', checkedOut: 'បានចេញពីការងារ!', returning: 'ត្រឡប់ទៅទំព័រដើមក្នុងរយៈពេល {n}...',
+    errTitle: 'មានបញ្ហាកើតឡើង', tryAgain: '← ព្យាយាមម្តងទៀត',
+    camDenied: 'មិនអាចប្រើកាមេរ៉ាបានទេ។ សូមអនុញ្ញាតកាមេរ៉ា ហើយព្យាយាមម្តងទៀត។', saveFailed: 'រក្សាទុកមិនបានសម្រេច៖ ',
+    fbError: 'មិនអាចភ្ជាប់ទៅប្រព័ន្ធបានទេ',
+    morning: 'អរុណសួស្តី', afternoon: 'ទិវាសួស្តី', evening: 'សាយណ្ហសួស្តី',
+    reqLeaveTitle: 'ស្នើសុំច្បាប់', myReqs: 'សំណើថ្មីៗរបស់ខ្ញុំ', noReqs: 'មិនទាន់មានសំណើនៅឡើយទេ', loading: 'កំពុងផ្ទុក...', couldNotLoad: 'មិនអាចផ្ទុកបានទេ៖ ',
+    hintStart: 'ចុចលើ<b>ថ្ងៃចាប់ផ្តើម</b>នៃការសុំច្បាប់របស់អ្នក',
+    hintEnd: 'ចាប់ពី <b>{d}</b> — ឥឡូវចុចលើ<b>ថ្ងៃចុងក្រោយ</b> (ចុចថ្ងៃដដែលម្តងទៀត ប្រសិនបើសុំតែមួយថ្ងៃ)',
+    reasonTitle: 'មូលហេតុនៃការសុំច្បាប់', lt_sick: 'ឈឺ', lt_annual: 'ច្បាប់ឈប់សម្រាកប្រចាំឆ្នាំ', lt_personal: 'កិច្ចការផ្ទាល់ខ្លួន / គ្រួសារ',
+    lt_full_sick: 'ច្បាប់ឈឺ', lt_full_annual: 'ច្បាប់ឈប់សម្រាកប្រចាំឆ្នាំ', lt_full_personal: 'កិច្ចការផ្ទាល់ខ្លួន / គ្រួសារ',
+    length: 'រយៈពេល', d_full: 'ពេញមួយថ្ងៃ', d_am: 'ពេលព្រឹក', d_pm: 'ពេលរសៀល',
+    dur_full: 'ពេញមួយថ្ងៃ', dur_am: 'កន្លះថ្ងៃ (ព្រឹក)', dur_pm: 'កន្លះថ្ងៃ (រសៀល)',
+    cancel: 'បោះបង់', submit: 'ដាក់ស្នើ', submitting: 'កំពុងដាក់ស្នើ...', unpaid: 'គ្មានប្រាក់ឈ្នួល',
+    st_pending: 'កំពុងរង់ចាំ', st_approved: 'បានអនុម័ត', st_rejected: 'មិនអនុម័ត',
+    submitted: 'បានដាក់ស្នើរួចរាល់', pendingApproval: 'កំពុងរង់ចាំការអនុម័ត',
+    tapName: 'សូមចុចលើឈ្មោះរបស់អ្នកជាមុនសិន', max60: 'ការសុំច្បាប់មិនអាចលើសពី ៦០ ថ្ងៃទេ', notWorkdays: 'ថ្ងៃទាំងនោះមិនមែនជាថ្ងៃធ្វើការទេ',
+    chooseReason: 'សូមជ្រើសរើសមូលហេតុ', clash: 'អ្នកមានច្បាប់រួចហើយនៅ{d}។ តើនៅតែចង់ដាក់ស្នើទៀតទេ?',
+    leaveBlocked: 'ប្រព័ន្ធមិនអនុញ្ញាតឱ្យដាក់សំណើសុំច្បាប់ទេ។ សូមប្រាប់អ្នកគ្រប់គ្រង។',
+    leaveFailed: 'មិនអាចផ្ញើសំណើសុំច្បាប់បានទេ៖ ',
+    weekdays: ['អា','ច','អ','ព','ព្រ','សុ','ស'],
+    months: KM_MONTHS,
+    langBtn: 'English',
+  },
+};
+function t(key, vars) {
+  let v = (I18N[UI_LANG] && I18N[UI_LANG][key]) ?? I18N.en[key] ?? key;
+  if (vars && typeof v === 'string') Object.entries(vars).forEach(([k, x]) => { v = v.split('{' + k + '}').join(x); });
+  return v;
+}
+function setGreeting() {
+  const h = +ppParts(new Date()).minutes / 60;
+  document.getElementById('greeting').textContent = t(h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening');
+}
+function applyLang() {
+  document.documentElement.lang = UI_LANG;
+  document.querySelectorAll('#employee-view [data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('#employee-view [data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
+  document.getElementById('lang-btn').textContent = t('langBtn');
+  setGreeting();
+  if (allStaff.length) renderList(allStaff);
+  if (document.getElementById('screen-leave').classList.contains('active')) {
+    renderCalendar(); updateSheetDates(); if (selectedPerson) loadMyLeaves();
+  }
+}
+function toggleLang() {
+  UI_LANG = UI_LANG === 'km' ? 'en' : 'km';
+  try { localStorage.setItem('fa_lang', UI_LANG); } catch {}
+  applyLang();
+}
+try { UI_LANG = localStorage.getItem('fa_lang') === 'en' ? 'en' : 'km'; } catch { UI_LANG = 'km'; }
+
 let empCfg = getStoredConfig();
 let allStaff = [];
 let selectedPerson = null;
@@ -4428,11 +4539,11 @@ function saveEmpConfig() {
 function initEmpFirebase() {
   const ok = connectFirebase(empCfg);
   if (ok) { goTo('select'); loadStaff(); syncTelegramSettings(); syncSchedules(); }
-  else { document.getElementById('err-msg').textContent = 'Firebase connection error'; goTo('error'); }
+  else { document.getElementById('err-msg').textContent = t('fbError'); goTo('error'); }
 }
 
 const hr = new Date().getHours();
-document.getElementById('greeting').textContent = hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
+applyLang();
 
 async function loadStaff() {
   if (!db) return;
@@ -4441,12 +4552,12 @@ async function loadStaff() {
     allStaff = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     renderList(allStaff);
   } catch(e) {
-    document.getElementById('staff-list').innerHTML = `<div style="color:var(--rl);font-size:13px;padding:20px;text-align:center">Error loading staff: ${e.message}</div>`;
+    document.getElementById('staff-list').innerHTML = `<div style="color:var(--rl);font-size:13px;padding:20px;text-align:center">${t('errStaff')}${escHtml(e.message)}</div>`;
   }
 }
 function renderList(list) {
   const el = document.getElementById('staff-list');
-  if (!list.length) { el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:20px;text-align:center">No staff found. Ask admin to register employees.</div>'; return; }
+  if (!list.length) { el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:20px;text-align:center">' + t('noStaff') + '</div>'; return; }
   el.innerHTML = list.map(s =>
     `<button class="staff-btn ${selectedPerson?.id===s.id?'sel':''}" onclick="pick('${s.id}')">
       <div class="av-lg">${initials(s.name)}</div>
@@ -4473,7 +4584,7 @@ function setType(t) {
 async function openCamera() {
   if (!selectedPerson) return;
   document.getElementById('cam-name').textContent = selectedPerson.name;
-  document.getElementById('cam-type').textContent = selectedType==='in' ? '✅ Checking In' : '🚪 Checking Out';
+  document.getElementById('cam-type').textContent = t(selectedType==='in' ? 'checkingIn' : 'checkingOut');
   goTo('camera');
   await startCam();
 }
@@ -4487,7 +4598,7 @@ async function startCam() {
     // the live preview matches what gets saved (normal, non-mirrored orientation)
     v.style.transform = facing === 'user' ? 'scaleX(-1)' : 'scaleX(1)';
   } catch(e) {
-    document.getElementById('err-msg').textContent = 'Camera access denied. Please allow camera and try again.';
+    document.getElementById('err-msg').textContent = t('camDenied');
     goTo('error');
   }
 }
@@ -4509,14 +4620,14 @@ function showPreview() {
   document.getElementById('prev-name').textContent = selectedPerson.name;
   document.getElementById('prev-meta').textContent = `${selectedPerson.dept||''} · ${selectedPerson.id}`;
   const badge = document.getElementById('prev-badge');
-  badge.textContent = selectedType==='in' ? '✅ Check-In' : '🚪 Check-Out';
+  badge.textContent = t(selectedType==='in' ? 'badgeIn' : 'badgeOut');
   badge.className = 'prev-badge ' + selectedType;
   // Reset location preview state for this fresh check-in attempt
   cachedLocation = undefined; // undefined = not yet fetched, null = fetched but unavailable
   if (miniMapInstance) { miniMapInstance.remove(); miniMapInstance = null; }
   document.getElementById('location-preview-wrap').classList.add('hidden');
   document.getElementById('location-mini-map').classList.remove('show');
-  document.getElementById('btn-show-location').textContent = '📍 Show My Location';
+  document.getElementById('btn-show-location').textContent = t('showLoc');
   document.getElementById('btn-show-location').classList.remove('active');
   goTo('preview');
 }
@@ -4550,35 +4661,35 @@ async function toggleLocationPreview() {
   const isOpen = !wrap.classList.contains('hidden');
   if (isOpen) {
     wrap.classList.add('hidden');
-    btn.textContent = '📍 Show My Location';
+    btn.textContent = t('showLoc');
     btn.classList.remove('active');
     return;
   }
 
   wrap.classList.remove('hidden');
-  btn.textContent = '📍 Hide Location';
+  btn.textContent = t('hideLoc');
   btn.classList.add('active');
 
   if (cachedLocation === undefined) {
     statusEl.className = 'loc-status';
-    statusEl.textContent = 'Getting your location...';
+    statusEl.textContent = t('gettingLoc');
     cachedLocation = await getCurrentLocation(8000);
   }
 
   if (!cachedLocation) {
     statusEl.className = 'loc-status err';
-    statusEl.textContent = '⚠️ Location unavailable — check your device permissions. You can still check in without it.';
+    statusEl.textContent = t('noLoc');
     mapEl.classList.remove('show');
     return;
   }
 
   statusEl.className = 'loc-status ok';
-  statusEl.textContent = `📍 Accurate to ±${Math.round(cachedLocation.accuracy)}m`;
+  statusEl.textContent = t('accurate', { n: numL(Math.round(cachedLocation.accuracy)) });
   mapEl.classList.add('show');
 
   if (typeof L === 'undefined') {
     statusEl.className = 'loc-status err';
-    statusEl.textContent = 'Map library unavailable, but your location was captured.';
+    statusEl.textContent = t('noMap');
     mapEl.classList.remove('show');
     return;
   }
@@ -4602,7 +4713,7 @@ async function toggleLocationPreview() {
 async function submitCheckin() {
   if (!db || !selectedPerson || !photoDataUrl) return;
   const btn = document.getElementById('btn-confirm');
-  btn.innerHTML = '<span class="spinner"></span>Saving...';
+  btn.innerHTML = '<span class="spinner"></span>' + t('saving');
   btn.className = 'btn-confirm loading';
   const compressed = await compressPhoto(photoDataUrl, 600, 0.70);
   // Reuse the location if the employee already revealed it via the preview button;
@@ -4627,21 +4738,21 @@ async function submitCheckin() {
     notifyCheckin(entry); // fire-and-forget — never blocks check-in
     showSuccess(entry);
   } catch(e) {
-    document.getElementById('err-msg').textContent = 'Save failed: ' + e.message;
+    document.getElementById('err-msg').textContent = t('saveFailed') + e.message;
     goTo('error');
   }
-  btn.innerHTML = '✓ Confirm';
+  btn.innerHTML = t('confirm');
   btn.className = 'btn-confirm';
 }
 function showSuccess(entry) {
   const isIn = entry.type==='in';
   document.getElementById('sc-ring').className = 'success-ring ' + (isIn?'in':'out');
   document.getElementById('sc-ring').textContent = isIn?'✓':'👋';
-  document.getElementById('sc-title').textContent = isIn?'Checked In!':'Checked Out!';
+  document.getElementById('sc-title').textContent = t(isIn ? 'checkedIn' : 'checkedOut');
   document.getElementById('sc-title').className = 'sc-title ' + (isIn?'in':'out');
   document.getElementById('sc-name').textContent = entry.name;
   document.getElementById('sc-meta').textContent = (entry.dept||'') + ' · ' + entry.employeeId;
-  document.getElementById('sc-time').textContent = '🕐 ' + new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  document.getElementById('sc-time').textContent = '🕐 ' + numL(new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit',timeZone:TZ}));
   goTo('success');
   startAutoReturn(3);
 }
@@ -4651,7 +4762,7 @@ function startAutoReturn(seconds) {
   if (autoReturnTimer) clearInterval(autoReturnTimer);
   let remaining = seconds;
   const el = document.getElementById('sc-autoreturn');
-  el.textContent = `Returning to start in ${remaining}...`;
+  el.textContent = t('returning', { n: numL(remaining) });
   autoReturnTimer = setInterval(() => {
     remaining--;
     if (remaining <= 0) {
@@ -4660,7 +4771,7 @@ function startAutoReturn(seconds) {
       resetEmp();
       return;
     }
-    el.textContent = `Returning to start in ${remaining}...`;
+    el.textContent = t('returning', { n: numL(remaining) });
   }, 1000);
 }
 
@@ -4686,7 +4797,7 @@ let myLeaveDays = {};          // dateKey -> status, for the dots on the calenda
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 function openLeave() {
-  if (!selectedPerson) { toast('Tap your name first', 'error'); return; }
+  if (!selectedPerson) { toast(t('tapName'), 'error'); return; }
   document.getElementById('lv-who').textContent = `${selectedPerson.name} · ${selectedPerson.id}`;
   calMonth = todayKeyPP().slice(0, 7);
   calStart = calEnd = null; myLeaveDays = {};
@@ -4705,13 +4816,13 @@ function calMove(n) { calMonth = shiftMonth(calMonth, n); renderCalendar(); }
 function renderCalendar() {
   const tk = todayKeyPP(), cfg = readScheduleCache();
   const [y, m] = calMonth.split('-').map(Number);
-  document.getElementById('cal-title').textContent = `${MONTH_NAMES[m - 1]} ${y}`;
+  document.getElementById('cal-title').textContent = `${t('months')[m - 1]} ${numL(y)}`;
   // Can go back one month (sick days already taken) and up to 6 months ahead
   document.getElementById('cal-prev').disabled = calMonth <= shiftMonth(tk.slice(0, 7), -1);
   document.getElementById('cal-next').disabled = calMonth >= shiftMonth(tk.slice(0, 7), 6);
   const first = new Date(Date.UTC(y, m - 1, 1)).getUTCDay();
   const nDays = new Date(Date.UTC(y, m, 0)).getUTCDate();
-  let html = WEEKDAY_NAMES.map(w => `<div class="cal-wd">${w}</div>`).join('');
+  let html = t('weekdays').map(w => `<div class="cal-wd">${w}</div>`).join('');
   for (let i = 0; i < first; i++) html += '<div class="cal-day empty"></div>';
   for (let d = 1; d <= nDays; d++) {
     const k = `${calMonth}-${String(d).padStart(2, '0')}`;
@@ -4722,15 +4833,15 @@ function renderCalendar() {
     if (k === calStart || k === calEnd) cls.push('sel');
     else if (calStart && calEnd && k > calStart && k < calEnd) cls.push('in-range');
     if (myLeaveDays[k]) cls.push('has-leave');
-    html += `<button class="${cls.join(' ')}" data-k="${k}" onclick="calTap('${k}')">${d}</button>`;
+    html += `<button class="${cls.join(' ')}" data-k="${k}" onclick="calTap('${k}')">${numL(d)}</button>`;
   }
   document.getElementById('cal-grid').innerHTML = html;
   updateCalHint();
 }
 function updateCalHint() {
   const el = document.getElementById('cal-hint');
-  if (!calStart) el.innerHTML = 'Tap the <b>first day</b> of your leave';
-  else if (!calEnd) el.innerHTML = `From <b>${fmtDateKey(calStart)}</b> — now tap the <b>last day</b> (tap the same day again for one day)`;
+  if (!calStart) el.innerHTML = t('hintStart');
+  else if (!calEnd) el.innerHTML = t('hintEnd', { d: fmtDateKey(calStart) });
   else el.innerHTML = `<b>${fmtLeaveRange({ from: calStart, to: calEnd })}</b>`;
 }
 function calTap(k) {
@@ -4741,11 +4852,11 @@ function calTap(k) {
   }
   if (k < calStart) { calEnd = calStart; calStart = k; } else calEnd = k;
   if (dateKeysBetween(calStart, calEnd).length > 60) {
-    toast('Leave can be at most 60 days', 'error');
+    toast(t('max60'), 'error');
     calStart = calEnd = null; renderCalendar(); return;
   }
   if (!leaveDayCount(calStart, calEnd, 'full')) {
-    toast('Those dates are not working days', 'error');
+    toast(t('notWorkdays'), 'error');
     calStart = calEnd = null; renderCalendar(); return;
   }
   renderCalendar();
@@ -4768,7 +4879,7 @@ function closeLeaveSheet() {
 function updateSheetDates() {
   if (!calStart || !calEnd) return;
   const days = leaveDayCount(calStart, calEnd, leaveDuration);
-  document.getElementById('lv-sheet-dates').textContent = `${fmtLeaveRange({ from: calStart, to: calEnd })} · ${fmtDays(days)} · unpaid`;
+  document.getElementById('lv-sheet-dates').textContent = `${fmtLeaveRange({ from: calStart, to: calEnd })} · ${fmtDays(days)} · ${t('unpaid')}`;
 }
 function setChip(rowId, v) {
   document.querySelectorAll(`#${rowId} .chip`).forEach(b => b.classList.toggle('sel', b.dataset.v === v));
@@ -4782,7 +4893,7 @@ function setLeaveDuration(v) { leaveDuration = v; setChip('lv-dur-row', v); upda
 
 async function loadMyLeaves() {
   const el = document.getElementById('lv-mine');
-  el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:10px;text-align:center"><span class="spinner"></span>Loading...</div>';
+  el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:10px;text-align:center"><span class="spinner"></span>' + t('loading') + '</div>';
   try {
     const snap = await db.collection('leaves').where('employeeId', '==', selectedPerson.id).get();
     const all = snap.docs.map(d => d.data({ serverTimestamps: 'estimate' }));
@@ -4790,27 +4901,26 @@ async function loadMyLeaves() {
     all.filter(l => l.status !== 'rejected').forEach(l => dateKeysBetween(l.from, l.to).forEach(k => myLeaveDays[k] = l.status));
     renderCalendar();
     const list = all.sort((a,b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0)).slice(0, 5);
-    const label = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' };
     el.innerHTML = list.length ? list.map(l => `<div class="my-leave">
-        <div><div>${escHtml(LEAVE_TYPES[l.type] || l.type)} · ${fmtLeaveRange(l)}</div>
-        <div class="ml-sub">${escHtml(LEAVE_DURATIONS[l.duration] || '')} · ${fmtDays(l.days || 0)}${l.adminNote ? ' · ' + escHtml(l.adminNote) : ''}</div></div>
-        <span class="badge ${escHtml(l.status)}">${label[l.status] || escHtml(l.status)}</span>
+        <div><div>${escHtml(t('lt_full_' + l.type))} · ${fmtLeaveRange(l)}</div>
+        <div class="ml-sub">${escHtml(t('dur_' + l.duration))} · ${fmtDays(l.days || 0)}${l.adminNote ? ' · ' + escHtml(l.adminNote) : ''}</div></div>
+        <span class="badge ${escHtml(l.status)}">${escHtml(t('st_' + l.status))}</span>
       </div>`).join('')
-      : '<div style="color:var(--muted);font-size:13px;padding:10px;text-align:center">No requests yet</div>';
+      : '<div style="color:var(--muted);font-size:13px;padding:10px;text-align:center">' + t('noReqs') + '</div>';
   } catch(e) {
-    el.innerHTML = `<div style="color:var(--rl);font-size:13px;padding:10px;text-align:center">Could not load: ${escHtml(e.message)}</div>`;
+    el.innerHTML = `<div style="color:var(--rl);font-size:13px;padding:10px;text-align:center">${t('couldNotLoad')}${escHtml(e.message)}</div>`;
   }
 }
 async function submitLeave() {
   if (!db || !selectedPerson || !calStart || !calEnd) return;
-  if (!leaveType) { toast('Choose a reason', 'error'); return; }
+  if (!leaveType) { toast(t('chooseReason'), 'error'); return; }
   const duration = calStart === calEnd ? leaveDuration : 'full';
   const days = leaveDayCount(calStart, calEnd, duration);
-  if (!days) { toast('Those dates are not working days', 'error'); return; }
+  if (!days) { toast(t('notWorkdays'), 'error'); return; }
   const clash = Object.keys(myLeaveDays).find(k => k >= calStart && k <= calEnd);
-  if (clash && !confirm(`You already have leave on ${fmtDateKey(clash)}. Submit anyway?`)) return;
+  if (clash && !confirm(t('clash', { d: fmtDateKey(clash) }))) return;
   const btn = document.getElementById('btn-leave-submit');
-  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Submitting...';
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>' + t('submitting');
   const leave = {
     employeeId: selectedPerson.id, name: selectedPerson.name, dept: selectedPerson.dept || '',
     type: leaveType, duration, from: calStart, to: calEnd, days,
@@ -4823,26 +4933,26 @@ async function submitLeave() {
     calStart = calEnd = null;
     document.getElementById('sc-ring').className = 'success-ring in';
     document.getElementById('sc-ring').textContent = '✓';
-    document.getElementById('sc-title').textContent = 'Request Submitted';
+    document.getElementById('sc-title').textContent = t('submitted');
     document.getElementById('sc-title').className = 'sc-title in';
     document.getElementById('sc-name').textContent = leave.name;
-    document.getElementById('sc-meta').textContent = `${LEAVE_TYPES[leave.type]} · ${fmtDays(days)}`;
-    document.getElementById('sc-time').textContent = fmtLeaveRange(leave) + ' · Pending approval';
+    document.getElementById('sc-meta').textContent = `${t('lt_full_' + leave.type)} · ${fmtDays(days)}`;
+    document.getElementById('sc-time').textContent = fmtLeaveRange(leave) + ' · ' + t('pendingApproval');
     goTo('success');
     startAutoReturn(4);
   } catch(e) {
     document.getElementById('lv-sheet').classList.remove('open');
     document.getElementById('err-msg').textContent = e.code === 'permission-denied'
-      ? 'Leave requests are blocked by the database rules. Please tell your admin to allow the "leaves" collection in Firestore rules.'
-      : 'Could not send leave request: ' + e.message;
+      ? t('leaveBlocked')
+      : t('leaveFailed') + e.message;
     console.error('Leave submit failed:', e.code, e.message);
     goTo('error');
   }
-  btn.innerHTML = 'Submit';
+  btn.innerHTML = t('submit');
 }
 window.openLeave = openLeave; window.setLeaveType = setLeaveType; window.setLeaveDuration = setLeaveDuration;
 window.calMove = calMove; window.calTap = calTap; window.closeLeaveSheet = closeLeaveSheet;
-window.submitLeave = submitLeave; window.goTo = goTo;
+window.submitLeave = submitLeave; window.goTo = goTo; window.toggleLang = toggleLang;
 
 window.saveEmpConfig = saveEmpConfig; window.pick = pick; window.filterList = filterList;
 window.setType = setType; window.openCamera = openCamera; window.flipCam = flipCam;
