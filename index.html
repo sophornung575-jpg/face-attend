@@ -4832,7 +4832,10 @@ async function submitLeave() {
     startAutoReturn(4);
   } catch(e) {
     document.getElementById('lv-sheet').classList.remove('open');
-    document.getElementById('err-msg').textContent = 'Could not send leave request: ' + e.message;
+    document.getElementById('err-msg').textContent = e.code === 'permission-denied'
+      ? 'Leave requests are blocked by the database rules. Please tell your admin to allow the "leaves" collection in Firestore rules.'
+      : 'Could not send leave request: ' + e.message;
+    console.error('Leave submit failed:', e.code, e.message);
     goTo('error');
   }
   btn.innerHTML = 'Submit';
@@ -4855,5 +4858,3 @@ window.openModal = openModal; window.closeModal = closeModal;
 </script>
 </body>
 </html>
-
-  
